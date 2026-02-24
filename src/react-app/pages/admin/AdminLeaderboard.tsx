@@ -1,15 +1,5 @@
 import { useState, useEffect } from "react";
 import { Trophy, Medal, Star } from "lucide-react";
-import {
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    Cell,
-} from "recharts";
 import { getUsers, type AppUser } from "@/react-app/lib/adminData";
 
 const BADGE_MAP: Record<number, string> = { 3: "Champion", 2: "Expert", 1: "Coder", 0: "Lurker" };
@@ -19,25 +9,52 @@ const BADGE_COLOR: Record<string, string> = {
     Coder: "from-slate-600 to-slate-500 text-white",
     Lurker: "from-zinc-800 to-zinc-700 text-white/50",
 };
-const RANK_COLORS = ["#f59e0b", "#94a3b8", "#b45309"];
+
+// Pure SVG bar chart (shared)
+function ScoreBar({ data }: { data: { name: string; score: number; rank: number }[] }) {
+    const W = 560, H = 200, PAD_L = 36, PAD_B = 28, INNER_W = W - PAD_L - 8, INNER_H = H - PAD_B - 8;
+    const barW = INNER_W / data.length;
+    const rankColors = ["#f59e0b", "#94a3b8", "#b45309"];
+    return (
+        <div className="w-full overflow-x-auto">
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: 300 }}>
+                {[0, 25, 50, 75, 100].map(v => {
+                    const y = 8 + INNER_H - (v / 100) * INNER_H;
+                    return (
+                        <g key={v}>
+                            <line x1={PAD_L} y1={y} x2={W - 8} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+                            <text x={PAD_L - 4} y={y + 4} textAnchor="end" fill="rgba(255,255,255,0.3)" fontSize="9">{v}</text>
+                        </g>
+                    );
+                })}
+                {data.map((d, i) => {
+                    const bh = (d.score / 100) * INNER_H;
+                    const x = PAD_L + i * barW + barW * 0.15;
+                    const y = 8 + INNER_H - bh;
+                    const w = barW * 0.7;
+                    const fill = rankColors[i] ?? "#8b5cf6";
+                    const opacity = i < 3 ? 1 : 0.6;
+                    return (
+                        <g key={i}>
+                            <rect x={x} y={y} width={w} height={bh} rx="4" fill={fill} opacity={opacity} />
+                            <text x={x + w / 2} y={H - 6} textAnchor="middle" fill="rgba(255,255,255,0.35)" fontSize="9">
+                                {d.name.split(" ")[0]}
+                            </text>
+                        </g>
+                    );
+                })}
+            </svg>
+        </div>
+    );
+}
 
 export default function AdminLeaderboard() {
     const [users, setUsers] = useState<AppUser[]>([]);
-
     useEffect(() => {
-        const sorted = [...getUsers()].sort((a, b) => b.score - a.score);
-        setUsers(sorted);
+        setUsers([...getUsers()].sort((a, b) => b.score - a.score));
     }, []);
 
     const top10 = users.slice(0, 10);
-
-    const RankIcon = ({ rank }: { rank: number }) => {
-        if (rank === 1) return <Trophy className="w-5 h-5 text-amber-400" />;
-        if (rank === 2) return <Medal className="w-5 h-5 text-slate-300" />;
-        if (rank === 3) return <Star className="w-5 h-5 text-orange-500" />;
-        return <span className="text-white/25 text-sm font-bold">#{rank}</span>;
-    };
-
     const podium = [users[1], users[0], users[2]].filter(Boolean);
     const podiumOrders = [2, 1, 3];
     const podiumHeights = ["h-24", "h-36", "h-20"];
@@ -46,6 +63,13 @@ export default function AdminLeaderboard() {
         "from-amber-500/30 to-amber-500/5 border-amber-500/30 text-amber-400 shadow-[0_0_30px_rgba(245,158,11,0.15)]",
         "from-orange-700/30 to-orange-700/5 border-orange-700/30 text-orange-500",
     ];
+
+    const RankIcon = ({ rank }: { rank: number }) => {
+        if (rank === 1) return <Trophy className="w-5 h-5 text-amber-400" />;
+        if (rank === 2) return <Medal className="w-5 h-5 text-slate-300" />;
+        if (rank === 3) return <Star className="w-5 h-5 text-orange-500" />;
+        return <span className="text-white/25 text-sm font-bold">#{rank}</span>;
+    };
 
     return (
         <div className="space-y-8">
@@ -57,7 +81,7 @@ export default function AdminLeaderboard() {
             {/* Podium */}
             {podium.length >= 3 && (
                 <div className="bg-[#0f0f1a] border border-white/5 rounded-2xl p-8">
-                    <h3 className="text-white/50 text-xs uppercase tracking-widest text-center mb-8">Top 3</h3>
+                    <p className="text-white/30 text-xs uppercase tracking-widest text-center mb-8">Top 3</p>
                     <div className="flex items-end justify-center gap-3 sm:gap-6">
                         {podium.map((user, pi) => (
                             <div key={user.id} className="flex flex-col items-center w-28 sm:w-36">
@@ -77,34 +101,10 @@ export default function AdminLeaderboard() {
                 </div>
             )}
 
-            {/* Score bar chart */}
+            {/* SVG bar chart */}
             <div className="bg-[#0f0f1a] border border-white/5 rounded-2xl p-6">
-                <h3 className="text-white font-semibold text-sm mb-5">Score Distribution — Top 10</h3>
-                <ResponsiveContainer width="100%" height={240}>
-                    <BarChart data={top10} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                        <XAxis
-                            dataKey="name"
-                            tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 11 }}
-                            tickFormatter={(v: string) => v.split(" ")[0]}
-                        />
-                        <YAxis tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 11 }} domain={[0, 100]} />
-                        <Tooltip
-                            contentStyle={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8 }}
-                            labelStyle={{ color: "rgba(255,255,255,0.8)" }}
-                            formatter={(v: number) => [`${v}%`, "Score"]}
-                        />
-                        <Bar dataKey="score" radius={[6, 6, 0, 0]}>
-                            {top10.map((_, i) => (
-                                <Cell
-                                    key={i}
-                                    fill={RANK_COLORS[i] ?? "#8b5cf6"}
-                                    opacity={i < 3 ? 1 : 0.6}
-                                />
-                            ))}
-                        </Bar>
-                    </BarChart>
-                </ResponsiveContainer>
+                <h3 className="text-white font-semibold text-sm mb-4">Score Distribution — Top 10</h3>
+                <ScoreBar data={top10.map((u, i) => ({ name: u.name, score: u.score, rank: i + 1 }))} />
             </div>
 
             {/* Full ranked table */}
@@ -117,13 +117,8 @@ export default function AdminLeaderboard() {
                     {users.map((user, i) => {
                         const badge = BADGE_MAP[user.roundsCompleted] ?? "Lurker";
                         return (
-                            <div
-                                key={user.id}
-                                className="flex items-center gap-4 px-6 py-4 hover:bg-white/2 transition-colors"
-                            >
-                                <div className="w-8 text-center shrink-0">
-                                    <RankIcon rank={i + 1} />
-                                </div>
+                            <div key={user.id} className="flex items-center gap-4 px-6 py-4 hover:bg-white/2 transition-colors">
+                                <div className="w-8 text-center shrink-0"><RankIcon rank={i + 1} /></div>
                                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500/30 to-indigo-600/30 flex items-center justify-center text-sm font-bold text-violet-300 border border-violet-500/20 shrink-0">
                                     {user.name.charAt(0)}
                                 </div>
@@ -134,19 +129,12 @@ export default function AdminLeaderboard() {
                                 <span className={`hidden sm:inline-block text-xs font-bold px-2.5 py-1 rounded-full bg-gradient-to-r ${BADGE_COLOR[badge]}`}>
                                     {badge}
                                 </span>
-                                <div className="hidden md:flex items-center gap-1 text-white/30 text-xs">
-                                    {user.roundsCompleted}/3 rounds
-                                </div>
+                                <div className="hidden md:block text-white/30 text-xs">{user.roundsCompleted}/3 rounds</div>
                                 <div className="flex items-center gap-2">
                                     <div className="hidden sm:block w-16 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full rounded-full bg-violet-500"
-                                            style={{ width: `${user.score}%` }}
-                                        />
+                                        <div className="h-full rounded-full bg-violet-500" style={{ width: `${user.score}%` }} />
                                     </div>
-                                    <span className={`text-sm font-black ${i < 3 ? "text-amber-400" : "text-violet-400"}`}>
-                                        {user.score}%
-                                    </span>
+                                    <span className={`text-sm font-black ${i < 3 ? "text-amber-400" : "text-violet-400"}`}>{user.score}%</span>
                                 </div>
                             </div>
                         );

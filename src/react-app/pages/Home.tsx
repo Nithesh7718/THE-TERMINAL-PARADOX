@@ -1,8 +1,9 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router";
-import { Code2, Trophy, Timer, Shield } from "lucide-react";
+import { Code2, Trophy, Timer, Shield, LogOut } from "lucide-react";
 import { Button } from "@/react-app/components/ui/button";
 import RoundSection from "@/react-app/components/RoundSection";
+import { getUserSession, clearUserSession } from "@/react-app/pages/Login";
 
 // Read the highest completed round from localStorage (default: 0 = none done)
 function getCompletedRounds(): number {
@@ -91,8 +92,14 @@ const features = [{
 export default function Home() {
   const navigate = useNavigate();
   const roundsRef = useRef<HTMLDivElement>(null);
+  const [userSession, setUserSession] = useState(() => getUserSession());
   // currentRound is 1-based: 1 = only Round 1 open, 2 = Rounds 1+2 open, etc.
   const [currentRound] = useState(() => (getCompletedRounds() + 1));
+
+  const handleSignOut = () => {
+    clearUserSession();
+    setUserSession(null);
+  };
 
   // Compute rounds with correct door statuses based on progress
   const rounds = stubRounds.map(round => ({
@@ -132,6 +139,19 @@ export default function Home() {
     <div className="relative z-10">
       {/* Hero Section */}
       <header className="relative py-20 px-6 text-center overflow-hidden">
+        {/* Top nav */}
+        <div className="absolute top-4 right-6 flex items-center gap-3">
+          {userSession && (
+            <>
+              <span className="text-sm text-muted-foreground hidden sm:block">
+                👋 {userSession.name}
+              </span>
+              <Button size="sm" variant="ghost" onClick={handleSignOut} className="gap-1.5 text-muted-foreground hover:text-foreground">
+                <LogOut className="w-3.5 h-3.5" /> Sign Out
+              </Button>
+            </>
+          )}
+        </div>
         <div className="max-w-4xl mx-auto">
           {/* Logo */}
           <div className="inline-flex items-center justify-center w-20 h-20 mb-8 rounded-2xl bg-gradient-to-br from-primary to-accent shadow-[0_0_40px_rgba(45,212,191,0.3)]">
@@ -155,14 +175,6 @@ export default function Home() {
               className="bg-gradient-to-r from-primary to-chart-1 hover:opacity-90 text-primary-foreground font-semibold px-8 shadow-[0_0_20px_rgba(45,212,191,0.4)]"
             >
               Start Challenge
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => navigate("/leaderboard")}
-              className="border-primary/50 text-primary hover:bg-primary/10"
-            >
-              View Leaderboard
             </Button>
           </div>
 
