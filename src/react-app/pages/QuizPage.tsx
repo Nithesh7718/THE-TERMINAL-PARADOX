@@ -69,6 +69,15 @@ export default function QuizPage() {
     setShowSubmitDialog(false);
   };
 
+  // Save progress and navigate to next round
+  const handleContinueToRound2 = () => {
+    try {
+      const current = parseInt(localStorage.getItem("completedRound") || "0", 10);
+      if (current < 1) localStorage.setItem("completedRound", "1");
+    } catch {/* ignore */ }
+    navigate("/");
+  };
+
   const calculateScore = () => {
     let correct = 0;
     questions.forEach((q, index) => {
@@ -118,8 +127,8 @@ export default function QuizPage() {
                 {doorNumber === 1
                   ? "Logic Gate"
                   : doorNumber === 2
-                  ? "Algorithm Alley"
-                  : "System Path"}
+                    ? "Algorithm Alley"
+                    : "System Path"}
               </p>
             </div>
           </div>
@@ -272,7 +281,10 @@ export default function QuizPage() {
                 Back to Home
               </Button>
               {passed && (
-                <Button className="bg-primary hover:bg-primary/90">
+                <Button
+                  className="bg-primary hover:bg-primary/90"
+                  onClick={handleContinueToRound2}
+                >
                   Continue to Round 2
                 </Button>
               )}

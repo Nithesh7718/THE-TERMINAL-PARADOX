@@ -1,8 +1,17 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router";
 import { Code2, Trophy, Timer, Shield } from "lucide-react";
 import { Button } from "@/react-app/components/ui/button";
 import RoundSection from "@/react-app/components/RoundSection";
+
+// Read the highest completed round from localStorage (default: 0 = none done)
+function getCompletedRounds(): number {
+  try {
+    return parseInt(localStorage.getItem("completedRound") || "0", 10);
+  } catch {
+    return 0;
+  }
+}
 
 // Stub data for demonstration
 const stubRounds = [{
@@ -81,7 +90,14 @@ const features = [{
 }];
 export default function Home() {
   const navigate = useNavigate();
-  const [currentRound] = useState(1);
+  const roundsRef = useRef<HTMLDivElement>(null);
+  // currentRound is 1-based: 1 = only Round 1 open, 2 = Rounds 1+2 open, etc.
+  const [currentRound] = useState(() => (getCompletedRounds() + 1));
+
+  const handleScrollToRounds = () => {
+    roundsRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
   const handleDoorSelect = (roundNumber: number, doorNumber: number) => {
     if (roundNumber === 1) {
       navigate(`/quiz/${doorNumber}`);
@@ -92,73 +108,82 @@ export default function Home() {
     }
   };
   return <div className="min-h-screen bg-background">
-      {/* Animated background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -left-32 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-pulse delay-1000" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-chart-3/5 rounded-full blur-3xl" />
-      </div>
+    {/* Animated background */}
+    <div className="fixed inset-0 overflow-hidden pointer-events-none">
+      <div className="absolute top-1/4 -left-32 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-pulse delay-1000" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-chart-3/5 rounded-full blur-3xl" />
+    </div>
 
-      {/* Content */}
-      <div className="relative z-10">
-        {/* Hero Section */}
-        <header className="relative py-20 px-6 text-center overflow-hidden">
-          <div className="max-w-4xl mx-auto">
-            {/* Logo */}
-            <div className="inline-flex items-center justify-center w-20 h-20 mb-8 rounded-2xl bg-gradient-to-br from-primary to-accent shadow-[0_0_40px_rgba(45,212,191,0.3)]">
-              <Code2 className="w-10 h-10 text-primary-foreground" />
-            </div>
-
-            <h1 className="text-5xl md:text-7xl font-black mb-4 bg-gradient-to-r from-primary via-chart-3 to-accent bg-clip-text text-transparent">THE TERMINAL PARADOX</h1>
-            <p className="text-xl md:text-2xl text-muted-foreground mb-2">
-              3 Rounds • 3 Doors • 1 Champion
-            </p>
-            <p className="text-lg text-muted-foreground/80 max-w-2xl mx-auto mb-8">
-              Challenge yourself through three intense rounds of programming
-              mastery. Choose your path wisely – each door holds unique
-              challenges.
-            </p>
-
-            <div className="flex flex-wrap justify-center gap-4 mb-12">
-              <Button size="lg" className="bg-gradient-to-r from-primary to-chart-1 hover:opacity-90 text-primary-foreground font-semibold px-8 shadow-[0_0_20px_rgba(45,212,191,0.4)]">
-                Start Challenge
-              </Button>
-              <Button size="lg" variant="outline" className="border-primary/50 text-primary hover:bg-primary/10">
-                View Leaderboard
-              </Button>
-            </div>
-
-            {/* Features */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto">
-              {features.map(feature => <div key={feature.title} className="p-4 rounded-xl bg-card/50 border border-border backdrop-blur-sm">
-                  <feature.icon className="w-8 h-8 text-primary mx-auto mb-3" />
-                  <h3 className="font-semibold text-foreground mb-1">
-                    {feature.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {feature.description}
-                  </p>
-                </div>)}
-            </div>
+    {/* Content */}
+    <div className="relative z-10">
+      {/* Hero Section */}
+      <header className="relative py-20 px-6 text-center overflow-hidden">
+        <div className="max-w-4xl mx-auto">
+          {/* Logo */}
+          <div className="inline-flex items-center justify-center w-20 h-20 mb-8 rounded-2xl bg-gradient-to-br from-primary to-accent shadow-[0_0_40px_rgba(45,212,191,0.3)]">
+            <Code2 className="w-10 h-10 text-primary-foreground" />
           </div>
-        </header>
 
-        {/* Rounds Section */}
-        <main className="px-6 pb-20">
-          <div className="max-w-6xl mx-auto space-y-8">
-            {stubRounds.map(round => <RoundSection key={round.roundNumber} roundNumber={round.roundNumber} title={round.title} subtitle={round.subtitle} doors={round.doors} isActive={round.roundNumber <= currentRound} onDoorSelect={doorNumber => handleDoorSelect(round.roundNumber, doorNumber)} />)}
-          </div>
-        </main>
+          <h1 className="text-5xl md:text-7xl font-black mb-4 bg-gradient-to-r from-primary via-chart-3 to-accent bg-clip-text text-transparent">THE TERMINAL PARADOX</h1>
+          <p className="text-xl md:text-2xl text-muted-foreground mb-2">
+            3 Rounds • 3 Doors • 1 Champion
+          </p>
+          <p className="text-lg text-muted-foreground/80 max-w-2xl mx-auto mb-8">
+            Challenge yourself through three intense rounds of programming
+            mastery. Choose your path wisely – each door holds unique
+            challenges.
+          </p>
 
-        {/* Footer */}
-        <footer className="py-8 px-6 border-t border-border">
-          <div className="max-w-6xl mx-auto text-center text-sm text-muted-foreground">
-            <p>Code Quest – 3 Rounds 3 Doors Challenge</p>
-            <p className="mt-1 opacity-60">
-              Prove your programming prowess across multiple domains
-            </p>
+          <div className="flex flex-wrap justify-center gap-4 mb-12">
+            <Button
+              size="lg"
+              onClick={handleScrollToRounds}
+              className="bg-gradient-to-r from-primary to-chart-1 hover:opacity-90 text-primary-foreground font-semibold px-8 shadow-[0_0_20px_rgba(45,212,191,0.4)]"
+            >
+              Start Challenge
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() => navigate("/leaderboard")}
+              className="border-primary/50 text-primary hover:bg-primary/10"
+            >
+              View Leaderboard
+            </Button>
           </div>
-        </footer>
-      </div>
-    </div>;
+
+          {/* Features */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+            {features.map(feature => <div key={feature.title} className="p-4 rounded-xl bg-card/50 border border-border backdrop-blur-sm">
+              <feature.icon className="w-8 h-8 text-primary mx-auto mb-3" />
+              <h3 className="font-semibold text-foreground mb-1">
+                {feature.title}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {feature.description}
+              </p>
+            </div>)}
+          </div>
+        </div>
+      </header>
+
+      {/* Rounds Section */}
+      <main className="px-6 pb-20">
+        <div ref={roundsRef} className="max-w-6xl mx-auto space-y-8">
+          {stubRounds.map(round => <RoundSection key={round.roundNumber} roundNumber={round.roundNumber} title={round.title} subtitle={round.subtitle} doors={round.doors} isActive={round.roundNumber <= currentRound} onDoorSelect={doorNumber => handleDoorSelect(round.roundNumber, doorNumber)} />)}
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="py-8 px-6 border-t border-border">
+        <div className="max-w-6xl mx-auto text-center text-sm text-muted-foreground">
+          <p>Code Quest – 3 Rounds 3 Doors Challenge</p>
+          <p className="mt-1 opacity-60">
+            Prove your programming prowess across multiple domains
+          </p>
+        </div>
+      </footer>
+    </div>
+  </div>;
 }

@@ -43,6 +43,7 @@ export default function DebugPage() {
   const [hasStarted, setHasStarted] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [showHint, setShowHint] = useState(false);
+  const [hintsUsed, setHintsUsed] = useState<Set<number>>(new Set());
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showTimeUpDialog, setShowTimeUpDialog] = useState(false);
@@ -163,6 +164,15 @@ export default function DebugPage() {
     setShowSubmitDialog(false);
   };
 
+  // Save progress and navigate to next round
+  const handleContinueToRound3 = () => {
+    try {
+      const current = parseInt(localStorage.getItem("completedRound") || "0", 10);
+      if (current < 2) localStorage.setItem("completedRound", "2");
+    } catch {/* ignore */ }
+    navigate("/");
+  };
+
   const handleNext = () => {
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
@@ -179,8 +189,13 @@ export default function DebugPage() {
     }
   };
 
-  const totalScore = Math.round(
-    questionStates.reduce((sum, q) => sum + q.score, 0) / questions.length
+  // Apply hint penalty: -10% per unique hint revealed
+  const HINT_PENALTY = 10;
+  const totalScore = Math.max(
+    0,
+    Math.round(
+      questionStates.reduce((sum, q) => sum + q.score, 0) / questions.length
+    ) - hintsUsed.size * HINT_PENALTY
   );
   const passed = totalScore >= PASSING_PERCENTAGE;
 
@@ -215,8 +230,8 @@ export default function DebugPage() {
               {doorNumber === 1
                 ? "Syntax Maze"
                 : doorNumber === 2
-                ? "Logic Trap"
-                : "Runtime Rush"}
+                  ? "Logic Trap"
+                  : "Runtime Rush"}
             </p>
             <p className="text-muted-foreground">
               Find and fix the bugs in 5 coding challenges.
@@ -309,12 +324,12 @@ export default function DebugPage() {
                 "w-10 h-10 rounded-lg text-sm font-medium transition-all",
                 "flex items-center justify-center",
                 currentQuestion === index &&
-                  "ring-2 ring-primary ring-offset-2 ring-offset-background",
+                "ring-2 ring-primary ring-offset-2 ring-offset-background",
                 questionStates[index].score >= 100
                   ? "bg-chart-1/20 text-chart-1 border border-chart-1/30"
                   : questionStates[index].score > 0
-                  ? "bg-chart-3/20 text-chart-3 border border-chart-3/30"
-                  : "bg-secondary text-muted-foreground border border-border"
+                    ? "bg-chart-3/20 text-chart-3 border border-chart-3/30"
+                    : "bg-secondary text-muted-foreground border border-border"
               )}
             >
               {index + 1}
@@ -337,11 +352,20 @@ export default function DebugPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowHint(!showHint)}
+                onClick={() => {
+                  const isRevealing = !showHint;
+                  setShowHint(isRevealing);
+                  if (isRevealing) {
+                    setHintsUsed(prev => new Set(prev).add(currentQuestion));
+                  }
+                }}
                 className="gap-2"
               >
                 <Lightbulb className="w-4 h-4" />
                 {showHint ? "Hide Hint" : "Show Hint"}
+                {!hintsUsed.has(currentQuestion) && (
+                  <span className="text-xs text-muted-foreground/70 ml-1">(-{10}%)</span>
+                )}
               </Button>
 
               {showHint && (
@@ -387,8 +411,8 @@ export default function DebugPage() {
                   currentState.score >= 100
                     ? "bg-chart-1/10 border-chart-1/30"
                     : currentState.score > 0
-                    ? "bg-chart-3/10 border-chart-3/30"
-                    : "bg-secondary border-border"
+                      ? "bg-chart-3/10 border-chart-3/30"
+                      : "bg-secondary border-border"
                 )}
               >
                 <p className="text-lg font-bold">
@@ -398,8 +422,8 @@ export default function DebugPage() {
                       currentState.score >= 100
                         ? "text-chart-1"
                         : currentState.score > 0
-                        ? "text-chart-3"
-                        : "text-muted-foreground"
+                          ? "text-chart-3"
+                          : "text-muted-foreground"
                     )}
                   >
                     {currentState.score}%
@@ -494,7 +518,10 @@ export default function DebugPage() {
                 Back to Home
               </Button>
               {passed && (
-                <Button className="bg-primary hover:bg-primary/90">
+                <Button
+                  className="bg-primary hover:bg-primary/90"
+                  onClick={handleContinueToRound3}
+                >
                   Continue to Round 3
                 </Button>
               )}
