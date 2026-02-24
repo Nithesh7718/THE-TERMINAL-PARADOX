@@ -2,10 +2,11 @@ import path from "path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// Static build config for GitHub Pages — no Cloudflare/Mocha plugins
+// Static build config — no Cloudflare/Mocha plugins, works on Vercel / GitHub Pages / Netlify
 export default defineConfig({
     plugins: [react()],
-    base: "/THE-TERMINAL-PARADOX/",
+    // base is "/" for Vercel; change to "/THE-TERMINAL-PARADOX/" for GitHub Pages
+    base: "/",
     build: {
         outDir: "dist",
         chunkSizeWarningLimit: 5000,

@@ -1,0 +1,10 @@
+{
+    "buildCommand": "npm run build:ghpages",
+    "outputDirectory": "dist",
+    "rewrites": [
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
+        }
+    ]
+}
