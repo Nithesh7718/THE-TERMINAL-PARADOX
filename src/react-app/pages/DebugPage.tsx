@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import { useParams, useNavigate } from "react-router";
 import {
   ChevronLeft,
@@ -157,11 +158,13 @@ export default function DebugPage() {
   const handleTimeUp = useCallback(() => {
     setShowTimeUpDialog(true);
     setIsSubmitted(true);
+    toast.error("Time's up! Your debug challenge has been auto-submitted.");
   }, []);
 
   const handleSubmit = () => {
     setIsSubmitted(true);
     setShowSubmitDialog(false);
+    toast.success("Debug challenge submitted! Check your results below.");
   };
 
   // Save progress and navigate to next round

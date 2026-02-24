@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import { useParams, useNavigate } from "react-router";
 import {
   ChevronLeft,
@@ -62,11 +63,13 @@ export default function QuizPage() {
   const handleTimeUp = useCallback(() => {
     setShowTimeUpDialog(true);
     setIsSubmitted(true);
+    toast.error("Time's up! Your quiz has been auto-submitted.");
   }, []);
 
   const handleSubmit = () => {
     setIsSubmitted(true);
     setShowSubmitDialog(false);
+    toast.success("Quiz submitted! Scroll down to see your results.");
   };
 
   // Save progress and navigate to next round
@@ -159,6 +162,7 @@ export default function QuizPage() {
             <button
               key={index}
               onClick={() => setCurrentQuestion(index)}
+              aria-label={`Go to question ${index + 1}${answers[index] !== null ? ' (answered)' : ' (unanswered)'}`}
               className={cn(
                 "w-8 h-8 rounded-lg text-sm font-medium transition-all",
                 "flex items-center justify-center",

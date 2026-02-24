@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router";
+import { Toaster } from "sonner";
 import HomePage from "@/react-app/pages/Home";
 import QuizPage from "@/react-app/pages/QuizPage";
 import DebugPage from "@/react-app/pages/DebugPage";
@@ -9,6 +10,7 @@ import NotFound from "@/react-app/pages/NotFound";
 export default function App() {
   return (
     <Router>
+      <Toaster theme="dark" position="top-right" richColors closeButton />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/quiz/:door" element={<QuizPage />} />

@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import { useParams, useNavigate } from "react-router";
 import {
     ChevronLeft,
@@ -132,11 +133,13 @@ export default function CodingPage() {
     const handleTimeUp = useCallback(() => {
         setShowTimeUpDialog(true);
         setIsSubmitted(true);
+        toast.error("Time's up! Your coding challenge has been auto-submitted.");
     }, []);
 
     const handleSubmit = () => {
         setIsSubmitted(true);
         setShowSubmitDialog(false);
+        toast.success("Coding challenge submitted! Check your results below.");
     };
 
     const handleContinueHome = () => {
