@@ -26,6 +26,11 @@ export function clearUserSession(): void {
 type Mode = "login" | "register";
 type Tab = "participant" | "admin";
 
+// Seed a test user so login works out of the box
+if (!localStorage.getItem("user:test@email.com")) {
+    localStorage.setItem("user:test@email.com", JSON.stringify({ name: "Test User", password: "test123" }));
+}
+
 export default function Login() {
     const navigate = useNavigate();
     const [tab, setTab] = useState<Tab>("participant");

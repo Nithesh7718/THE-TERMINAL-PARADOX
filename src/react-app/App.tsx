@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from "react-router";
+import { HashRouter as Router, Routes, Route, Navigate, Outlet } from "react-router";
 import { Toaster } from "sonner";
 
 // Pages

@@ -135,6 +135,65 @@ int maxSubArray(vector<int>& nums) {
 int main() { }`,
         },
     },
+    {
+        id: 3,
+        title: "Merge Intervals",
+        difficulty: "Medium",
+        description:
+            "Given an array of `intervals` where `intervals[i] = [startᵢ, endᵢ]`, merge all overlapping intervals, and return an array of the non-overlapping intervals that cover all the intervals in the input.",
+        examples: [
+            {
+                input: "intervals = [[1,3],[2,6],[8,10],[15,18]]",
+                output: "[[1,6],[8,10],[15,18]]",
+                explanation: "[1,3] and [2,6] overlap, merged into [1,6]",
+            },
+            {
+                input: "intervals = [[1,4],[4,5]]",
+                output: "[[1,5]]",
+                explanation: "[1,4] and [4,5] overlap at 4",
+            },
+        ],
+        constraints: [
+            "1 ≤ intervals.length ≤ 10⁴",
+            "intervals[i].length == 2",
+            "0 ≤ startᵢ ≤ endᵢ ≤ 10⁴",
+        ],
+        testCases: [
+            { input: "[[1,3],[2,6],[8,10],[15,18]]", expectedOutput: "[[1,6],[8,10],[15,18]]" },
+            { input: "[[1,4],[4,5]]", expectedOutput: "[[1,5]]" },
+            { input: "[[1,4],[0,4]]", expectedOutput: "[[0,4]]" },
+        ],
+        starterCode: {
+            python: `def merge(intervals):
+    # Write your solution here
+    pass
+
+import sys, json
+intervals = json.loads(sys.stdin.read().strip())
+print(json.dumps(merge(intervals)))`,
+            javascript: `function merge(intervals) {
+  // Write your solution here
+}
+
+const intervals = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8').trim());
+console.log(JSON.stringify(merge(intervals)));`,
+            java: `import java.util.*;
+public class Main {
+    public static int[][] merge(int[][] intervals) {
+        // Write your solution here
+        return new int[][]{};
+    }
+    public static void main(String[] args) { }
+}`,
+            cpp: `#include <bits/stdc++.h>
+using namespace std;
+vector<vector<int>> merge(vector<vector<int>>& intervals) {
+    // Write your solution here
+    return {};
+}
+int main() { }`,
+        },
+    },
 ];
 
 const door2Questions: CodingQuestion[] = [
@@ -245,6 +304,61 @@ using namespace std;
 string longestCommonPrefix(vector<string>& strs) {
     // Write your solution here
     return "";
+}
+int main() { }`,
+        },
+    },
+    {
+        id: 3,
+        title: "Group Anagrams",
+        difficulty: "Medium",
+        description:
+            "Given an array of strings `strs`, group the anagrams together. You can return the answer in any order.\n\nAn Anagram is a word formed by rearranging the letters of a different word, using all the original letters exactly once.",
+        examples: [
+            {
+                input: 'strs = ["eat","tea","tan","ate","nat","bat"]',
+                output: '[["bat"],["nat","tan"],["ate","eat","tea"]]',
+            },
+            { input: 'strs = [""]', output: '[[""]]' },
+            { input: 'strs = ["a"]', output: '[["a"]]' },
+        ],
+        constraints: [
+            "1 ≤ strs.length ≤ 10⁴",
+            "0 ≤ strs[i].length ≤ 100",
+            "strs[i] consists of lowercase English letters",
+        ],
+        testCases: [
+            { input: '["eat","tea","tan","ate","nat","bat"]', expectedOutput: '[["bat"],["nat","tan"],["ate","eat","tea"]]' },
+            { input: '[""]', expectedOutput: '[[""]]' },
+            { input: '["a"]', expectedOutput: '[["a"]]' },
+        ],
+        starterCode: {
+            python: `def group_anagrams(strs):
+    # Write your solution here
+    pass
+
+import sys, json
+strs = json.loads(sys.stdin.read().strip())
+print(json.dumps(group_anagrams(strs)))`,
+            javascript: `function groupAnagrams(strs) {
+  // Write your solution here
+}
+
+const strs = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8').trim());
+console.log(JSON.stringify(groupAnagrams(strs)));`,
+            java: `import java.util.*;
+public class Main {
+    public static List<List<String>> groupAnagrams(String[] strs) {
+        // Write your solution here
+        return new ArrayList<>();
+    }
+    public static void main(String[] args) { }
+}`,
+            cpp: `#include <bits/stdc++.h>
+using namespace std;
+vector<vector<string>> groupAnagrams(vector<string>& strs) {
+    // Write your solution here
+    return {};
 }
 int main() { }`,
         },
@@ -370,6 +484,61 @@ using namespace std;
 int shortestPathBinaryMatrix(vector<vector<int>>& grid) {
     return -1;
 }
+int main() { }`,
+        },
+    },
+    {
+        id: 3,
+        title: "Clone Graph",
+        difficulty: "Hard",
+        description:
+            "Given a reference of a node in a connected undirected graph, return a deep copy (clone) of the graph.\n\nEach node in the graph contains a value (`int`) and a list of its neighbors.\n\nThe graph is represented as an adjacency list where `adj[i]` contains the neighbors of node `i+1`.",
+        examples: [
+            {
+                input: "adjList = [[2,4],[1,3],[2,4],[1,3]]",
+                output: "[[2,4],[1,3],[2,4],[1,3]]",
+                explanation: "4 nodes, node 1 connects to 2 and 4, etc.",
+            },
+            { input: "adjList = [[2],[1]]", output: "[[2],[1]]" },
+        ],
+        constraints: [
+            "0 ≤ number of nodes ≤ 100",
+            "1 ≤ Node.val ≤ 100",
+            "No repeated edges, no self-loops",
+        ],
+        testCases: [
+            { input: "[[2,4],[1,3],[2,4],[1,3]]", expectedOutput: "[[2,4],[1,3],[2,4],[1,3]]" },
+            { input: "[[2],[1]]", expectedOutput: "[[2],[1]]" },
+            { input: "[[]]", expectedOutput: "[[]]" },
+        ],
+        starterCode: {
+            python: `class Node:
+    def __init__(self, val=0, neighbors=None):
+        self.val = val
+        self.neighbors = neighbors if neighbors else []
+
+def clone_graph(node):
+    # Write your DFS/BFS clone here
+    pass
+
+import sys, json
+adj = json.loads(sys.stdin.read().strip())
+# Build graph from adj list, clone it, output adj list
+print(json.dumps(adj))  # placeholder`,
+            javascript: `function cloneGraph(node) {
+  // Write your DFS/BFS clone here
+}
+
+const adj = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8').trim());
+console.log(JSON.stringify(adj)); // placeholder`,
+            java: `import java.util.*;
+public class Main {
+    // Node class and cloneGraph method
+    public static void main(String[] args) { }
+}`,
+            cpp: `#include <bits/stdc++.h>
+using namespace std;
+// Node class and cloneGraph function
 int main() { }`,
         },
     },

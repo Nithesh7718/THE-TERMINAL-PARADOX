@@ -58,7 +58,7 @@ const stubRounds = [{
 }, {
   roundNumber: 3 as const,
   title: "Coding Conquest",
-  subtitle: "2 coding problems • 30 minutes • Full implementation",
+  subtitle: "3 coding problems • 30 minutes • Full implementation",
   doors: [{
     number: 1,
     title: "Array Forge",
@@ -203,7 +203,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="py-8 px-6 border-t border-border">
         <div className="max-w-6xl mx-auto text-center text-sm text-muted-foreground">
-          <p>Code Quest – 3 Rounds 3 Doors Challenge</p>
+          <p>The Terminal Paradox – 3 Rounds 3 Doors Challenge</p>
           <p className="mt-1 opacity-60">
             Prove your programming prowess across multiple domains
           </p>

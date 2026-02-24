@@ -2,6 +2,7 @@
   "name": "the-terminal-paradox",
   "private": true,
   "version": "0.0.0",
+  "homepage": "https://nithesh7718.github.io/THE-TERMINAL-PARADOX",
   "type": "module",
   "dependencies": {
     "@hono/zod-validator": "^0.5.0",
@@ -31,6 +32,7 @@
     "eslint": "^9.39.3",
     "eslint-plugin-react-hooks": "5.2.0",
     "eslint-plugin-react-refresh": "0.4.19",
+    "gh-pages": "^6.3.0",
     "globals": "15.15.0",
     "knip": "^5.51.0",
     "postcss": "^8.5.3",
@@ -43,6 +45,9 @@
   },
   "scripts": {
     "build": "tsc -b && vite build",
+    "build:ghpages": "vite build --config vite.ghpages.config.ts",
+    "predeploy": "npm run build:ghpages",
+    "deploy": "gh-pages -d dist",
     "cf-typegen": "wrangler types",
     "check": "tsc && vite build && wrangler deploy --dry-run",
     "dev": "vite",

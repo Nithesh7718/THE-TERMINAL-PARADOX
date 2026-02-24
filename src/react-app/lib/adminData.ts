@@ -17,16 +17,7 @@ const STORE_KEY = "adminUsers";
 
 function defaultUsers(): AppUser[] {
     return [
-        { id: 1, name: "Arjun Sharma", email: "arjun@email.com", role: "participant", score: 97, roundsCompleted: 3, lastActive: "2024-02-24", status: "active" },
-        { id: 2, name: "Priya Nair", email: "priya@email.com", role: "participant", score: 94, roundsCompleted: 3, lastActive: "2024-02-23", status: "active" },
-        { id: 3, name: "Karthik R", email: "karthik@email.com", role: "participant", score: 91, roundsCompleted: 3, lastActive: "2024-02-24", status: "active" },
-        { id: 4, name: "Dev Patel", email: "dev@email.com", role: "participant", score: 88, roundsCompleted: 3, lastActive: "2024-02-22", status: "active" },
-        { id: 5, name: "Sneha Rao", email: "sneha@email.com", role: "participant", score: 85, roundsCompleted: 3, lastActive: "2024-02-20", status: "inactive" },
-        { id: 6, name: "Rohan Kumar", email: "rohan@email.com", role: "participant", score: 79, roundsCompleted: 2, lastActive: "2024-02-19", status: "active" },
-        { id: 7, name: "Ananya M", email: "ananya@email.com", role: "participant", score: 74, roundsCompleted: 2, lastActive: "2024-02-18", status: "inactive" },
-        { id: 8, name: "Vikram S", email: "vikram@email.com", role: "participant", score: 68, roundsCompleted: 2, lastActive: "2024-02-24", status: "active" },
-        { id: 9, name: "Meera J", email: "meera@email.com", role: "participant", score: 62, roundsCompleted: 1, lastActive: "2024-02-17", status: "inactive" },
-        { id: 10, name: "Aditya B", email: "aditya@email.com", role: "participant", score: 55, roundsCompleted: 1, lastActive: "2024-02-16", status: "active" },
+        { id: 1, name: "Test User", email: "test@email.com", role: "participant", score: 0, roundsCompleted: 0, lastActive: "2024-02-24", status: "active" },
     ];
 }
 
