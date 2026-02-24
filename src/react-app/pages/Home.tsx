@@ -94,6 +94,19 @@ export default function Home() {
   // currentRound is 1-based: 1 = only Round 1 open, 2 = Rounds 1+2 open, etc.
   const [currentRound] = useState(() => (getCompletedRounds() + 1));
 
+  // Compute rounds with correct door statuses based on progress
+  const rounds = stubRounds.map(round => ({
+    ...round,
+    doors: round.doors.map(door => ({
+      ...door,
+      status: round.roundNumber < currentRound
+        ? "completed" as const
+        : round.roundNumber === currentRound
+          ? "available" as const
+          : "locked" as const,
+    }))
+  }));
+
   const handleScrollToRounds = () => {
     roundsRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -171,7 +184,7 @@ export default function Home() {
       {/* Rounds Section */}
       <main className="px-6 pb-20">
         <div ref={roundsRef} className="max-w-6xl mx-auto space-y-8">
-          {stubRounds.map(round => <RoundSection key={round.roundNumber} roundNumber={round.roundNumber} title={round.title} subtitle={round.subtitle} doors={round.doors} isActive={round.roundNumber <= currentRound} onDoorSelect={doorNumber => handleDoorSelect(round.roundNumber, doorNumber)} />)}
+          {rounds.map(round => <RoundSection key={round.roundNumber} roundNumber={round.roundNumber} title={round.title} subtitle={round.subtitle} doors={round.doors} isActive={round.roundNumber <= currentRound} onDoorSelect={doorNumber => handleDoorSelect(round.roundNumber, doorNumber)} />)}
         </div>
       </main>
 
