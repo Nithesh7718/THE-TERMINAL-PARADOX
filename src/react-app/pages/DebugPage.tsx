@@ -170,33 +170,45 @@ export default function DebugPage() {
     }, 1500);
   };
 
+  // Save progress immediately — called on submit AND time-up so back-button never loses data
+  const saveProgress = useCallback(async (score: number) => {
+    if (!userSession?.email) return;
+    try {
+      const nextProgress = Math.max(dbProgress, 2);
+      await updateUserScore(userSession.email, score, nextProgress);
+    } catch {
+      toast.error("Failed to save progress.");
+    }
+  }, [userSession, dbProgress]);
+
   const handleTimeUp = useCallback(() => {
     setShowTimeUpDialog(true);
     setIsSubmitted(true);
     toast.error("Time's up! Your debug challenge has been auto-submitted.");
-  }, []);
+    // Compute score from current state — save immediately
+    const HINT_PENALTY = 10;
+    const score = Math.max(0,
+      Math.round(questionStates.reduce((sum, q) => sum + q.score, 0) / Math.max(questions.length, 1))
+      - hintsUsed.size * HINT_PENALTY
+    );
+    saveProgress(score);
+  }, [questionStates, questions, hintsUsed, saveProgress]);
 
   const handleSubmit = () => {
     setIsSubmitted(true);
     setShowSubmitDialog(false);
     toast.success("Debug challenge submitted! Check your results below.");
+    // Save immediately so back-button doesn't lose progress
+    const HINT_PENALTY = 10;
+    const score = Math.max(0,
+      Math.round(questionStates.reduce((sum, q) => sum + q.score, 0) / Math.max(questions.length, 1))
+      - hintsUsed.size * HINT_PENALTY
+    );
+    saveProgress(score);
   };
 
-  // Save progress and navigate to next round
-  const handleContinueToRound3 = async () => {
-    if (userSession?.email) {
-      try {
-        // Only increment if we haven't already marked round 2 as done
-        const nextProgress = Math.max(dbProgress, 2);
-        // Average score between current total and existing score
-        await updateUserScore(userSession.email, totalScore, nextProgress);
-        toast.success("Progress saved to database.");
-      } catch (e) {
-        toast.error("Failed to save progress to database.");
-      }
-    }
-    navigate("/");
-  };
+  // Proceed button — progress already saved, just navigate
+  const handleContinueToRound3 = () => navigate("/");
 
   const handleNext = () => {
     if (currentQuestion < questions.length - 1) {

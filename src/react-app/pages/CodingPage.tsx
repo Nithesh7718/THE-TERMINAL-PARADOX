@@ -152,31 +152,41 @@ export default function CodingPage() {
         }, 1800);
     };
 
+    // Save progress immediately — called on submit AND time-up so back-button never loses data
+    const saveProgress = useCallback(async (score: number) => {
+        if (!userSession?.email) return;
+        try {
+            const nextProgress = Math.max(dbProgress, 3);
+            await updateUserScore(userSession.email, score, nextProgress);
+        } catch {
+            toast.error("Failed to save progress.");
+        }
+    }, [userSession, dbProgress]);
+
     const handleTimeUp = useCallback(() => {
         setShowTimeUpDialog(true);
         setIsSubmitted(true);
         toast.error("Time's up! Your coding challenge has been auto-submitted.");
-    }, []);
+        // Compute score from current state — save immediately
+        const score = Math.round(
+            questionStates.reduce((sum, q) => sum + q.score, 0) / Math.max(questions.length, 1)
+        );
+        saveProgress(score);
+    }, [questionStates, questions, saveProgress]);
 
     const handleSubmit = () => {
         setIsSubmitted(true);
         setShowSubmitDialog(false);
         toast.success("Coding challenge submitted! Check your results below.");
+        // Save immediately so back-button doesn't lose progress
+        const score = Math.round(
+            questionStates.reduce((sum, q) => sum + q.score, 0) / Math.max(questions.length, 1)
+        );
+        saveProgress(score);
     };
 
-    const handleContinueHome = async () => {
-        if (userSession?.email) {
-            try {
-                // Only increment if we haven't already marked round 3 as done
-                const nextProgress = Math.max(dbProgress, 3);
-                await updateUserScore(userSession.email, totalScore, nextProgress);
-                toast.success("Progress saved to database.");
-            } catch (e) {
-                toast.error("Failed to save progress to database.");
-            }
-        }
-        navigate("/");
-    };
+    // Proceed button — progress already saved, just navigate
+    const handleContinueHome = () => navigate("/");
 
     const totalScore = Math.round(
         questionStates.reduce((sum, q) => sum + q.score, 0) / questions.length

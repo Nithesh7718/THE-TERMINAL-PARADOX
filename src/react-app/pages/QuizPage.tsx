@@ -81,32 +81,39 @@ export default function QuizPage() {
     }
   };
 
+  // Save progress immediately — called on submit AND time-up so back-button never loses data
+  const saveProgress = useCallback(async (pct: number) => {
+    if (!userSession?.email) return;
+    try {
+      const nextProgress = Math.max(dbProgress, 1);
+      await updateUserScore(userSession.email, pct, nextProgress);
+    } catch {
+      toast.error("Failed to save progress.");
+    }
+  }, [userSession, dbProgress]);
+
   const handleTimeUp = useCallback(() => {
     setShowTimeUpDialog(true);
     setIsSubmitted(true);
     toast.error("Time's up! Your quiz has been auto-submitted.");
-  }, []);
+    // Score calculated inline since state hasn't updated yet
+    const correct = questions.reduce((n, q, i) => n + (answers[i] === q.correctAnswer ? 1 : 0), 0);
+    const pct = Math.round((correct / questions.length) * 100);
+    saveProgress(pct);
+  }, [questions, answers, saveProgress]);
 
   const handleSubmit = () => {
     setIsSubmitted(true);
     setShowSubmitDialog(false);
     toast.success("Quiz submitted! Scroll down to see your results.");
+    // Save immediately so back-button doesn't lose progress
+    const correct = questions.reduce((n, q, i) => n + (answers[i] === q.correctAnswer ? 1 : 0), 0);
+    const pct = Math.round((correct / questions.length) * 100);
+    saveProgress(pct);
   };
 
-  // Save progress and navigate to next round
-  const handleContinueToRound2 = async () => {
-    if (userSession?.email) {
-      try {
-        // Only increment if we haven't already marked round 1 as done
-        const nextProgress = Math.max(dbProgress, 1);
-        await updateUserScore(userSession.email, percentage, nextProgress);
-        toast.success("Progress saved to database.");
-      } catch (e) {
-        toast.error("Failed to save progress to database.");
-      }
-    }
-    navigate("/");
-  };
+  // Proceed button — progress already saved, just navigate
+  const handleContinueToRound2 = () => navigate("/");
 
   const calculateScore = () => {
     let correct = 0;
