@@ -10,6 +10,7 @@ import QuizPage from "@/react-app/pages/QuizPage";
 import DebugPage from "@/react-app/pages/DebugPage";
 import CodingPage from "@/react-app/pages/CodingPage";
 import NotFound from "@/react-app/pages/NotFound";
+import SEBRequired from "@/react-app/pages/SEBRequired";
 
 // Admin pages
 import AdminLogin from "@/react-app/pages/admin/AdminLogin";
@@ -22,8 +23,15 @@ import AdminLeaderboard from "@/react-app/pages/admin/AdminLeaderboard";
 import { getUserSession } from "@/react-app/pages/Login";
 import { getSession as getAdminSession } from "@/react-app/lib/adminAuth";
 import { subscribeToGameState } from "@/react-app/lib/gameState";
+import { isInSEB } from "@/react-app/lib/sebDetection";
 
 // ── Guards ─────────────────────────────────────────────────────────────────
+
+/** Block access unless user is inside Safe Exam Browser */
+function RequireSEB() {
+  if (!isInSEB()) return <SEBRequired />;
+  return <Outlet />;
+}
 
 /** Requires participant session — syncs game state from Firestore */
 function RequireGameStarted() {
@@ -78,11 +86,14 @@ export default function App() {
           <Route path="/waiting" element={<WaitingRoom />} />
         </Route>
 
-        <Route element={<RequireGameStarted />}>
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/quiz/:door" element={<QuizPage />} />
-          <Route path="/debug/:door" element={<DebugPage />} />
-          <Route path="/coding/:door" element={<CodingPage />} />
+        {/* Game pages: requires participant session + game started + SEB */}
+        <Route element={<RequireSEB />}>
+          <Route element={<RequireGameStarted />}>
+            <Route path="/home" element={<HomePage />} />
+            <Route path="/quiz/:door" element={<QuizPage />} />
+            <Route path="/debug/:door" element={<DebugPage />} />
+            <Route path="/coding/:door" element={<CodingPage />} />
+          </Route>
         </Route>
 
         <Route path="/admin" element={<AdminLayout />}>

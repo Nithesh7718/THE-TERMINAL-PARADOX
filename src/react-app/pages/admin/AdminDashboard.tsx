@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { Users, Trophy, Activity, TrendingUp, Star, PlayCircle, StopCircle } from "lucide-react";
+import { Users, Trophy, Activity, TrendingUp, Star, PlayCircle, StopCircle, Download } from "lucide-react";
 import { subscribeToUsers, type FSUser } from "@/react-app/lib/userService";
 import { subscribeToGameState, startGame, stopGame } from "@/react-app/lib/gameState";
 import { toast } from "sonner";
+import { downloadSEBConfig } from "@/react-app/lib/sebDetection";
 
 function StatCard({ icon: Icon, label, value, sub, color }: { icon: React.ElementType; label: string; value: string | number; sub?: string; color: string }) {
     return (
@@ -101,12 +102,17 @@ export default function AdminDashboard() {
                 </div>
                 <button onClick={toggleGame} disabled={toggling}
                     className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-60 ${gameActive
-                            ? "bg-red-600/20 border border-red-500/40 text-red-400 hover:bg-red-600/30"
-                            : "bg-emerald-600/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-600/30"
+                        ? "bg-red-600/20 border border-red-500/40 text-red-400 hover:bg-red-600/30"
+                        : "bg-emerald-600/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-600/30"
                         } shadow-lg`}>
                     {gameActive ? <StopCircle className="w-4 h-4" /> : <PlayCircle className="w-4 h-4" />}
                     {toggling ? "Updating…" : gameActive ? "Stop Game" : "Start Game"}
                     <span className={`w-2 h-2 rounded-full animate-pulse ${gameActive ? "bg-emerald-400" : "bg-red-400"}`} />
+                </button>
+                <button onClick={() => { downloadSEBConfig(window.location.origin); toast.success("SEB config downloaded! Distribute to participants."); }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm bg-blue-600/20 border border-blue-500/40 text-blue-400 hover:bg-blue-600/30 transition-all shadow-lg">
+                    <Download className="w-4 h-4" />
+                    Download SEB Config
                 </button>
             </div>
 
