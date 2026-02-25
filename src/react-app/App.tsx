@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from "react-router";
 import { Toaster } from "sonner";
 
@@ -17,38 +18,46 @@ import AdminDashboard from "@/react-app/pages/admin/AdminDashboard";
 import AdminUsers from "@/react-app/pages/admin/AdminUsers";
 import AdminLeaderboard from "@/react-app/pages/admin/AdminLeaderboard";
 
-// Auth helpers
+// Auth + state helpers
 import { getUserSession } from "@/react-app/pages/Login";
 import { getSession as getAdminSession } from "@/react-app/lib/adminAuth";
-import { isGameStarted } from "@/react-app/lib/gameState";
+import { subscribeToGameState } from "@/react-app/lib/gameState";
 
 // ── Guards ─────────────────────────────────────────────────────────────────
 
-/** Redirect to /login if participant session is missing */
+/** Requires participant session — syncs game state from Firestore */
+function RequireGameStarted() {
+  const session = getUserSession();
+  const [gameStarted, setGameStarted] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const unsub = subscribeToGameState(setGameStarted);
+    return unsub;
+  }, []);
+
+  if (!session) return <Navigate to="/login" replace />;
+  if (gameStarted === null) return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="w-2 h-2 rounded-full bg-primary animate-ping" />
+    </div>
+  );
+  if (!gameStarted) return <Navigate to="/waiting" replace />;
+  return <Outlet />;
+}
+
+/** Require participant session only */
 function RequireUser() {
   const session = getUserSession();
   if (!session) return <Navigate to="/login" replace />;
   return <Outlet />;
 }
 
-/** Redirect to /waiting if game hasn't started yet */
-function RequireGameStarted() {
-  const session = getUserSession();
-  if (!session) return <Navigate to="/login" replace />;
-  if (!isGameStarted()) return <Navigate to="/waiting" replace />;
-  return <Outlet />;
-}
-
-/** Redirect to /login if already authenticated (avoids re-login) */
+/** Skip login if already authenticated */
 function RedirectIfLoggedIn() {
   const userSession = getUserSession();
   const adminSession = getAdminSession();
   if (adminSession) return <Navigate to="/admin/dashboard" replace />;
-  if (userSession) {
-    return isGameStarted()
-      ? <Navigate to="/home" replace />
-      : <Navigate to="/waiting" replace />;
-  }
+  if (userSession) return <Navigate to="/waiting" replace />;
   return <Outlet />;
 }
 
@@ -57,23 +66,18 @@ export default function App() {
     <Router>
       <Toaster theme="dark" position="top-right" richColors closeButton />
       <Routes>
-        {/* Root always redirects to /login  */}
         <Route path="/" element={<Navigate to="/login" replace />} />
 
-        {/* Auth gate: if already logged in, skip login */}
         <Route element={<RedirectIfLoggedIn />}>
           <Route path="/login" element={<Login />} />
         </Route>
 
-        {/* Admin login (separate, no redirect guard needed) */}
         <Route path="/admin/login" element={<AdminLogin />} />
 
-        {/* Waiting room: requires participant session */}
         <Route element={<RequireUser />}>
           <Route path="/waiting" element={<WaitingRoom />} />
         </Route>
 
-        {/* Game pages: requires participant session + game started */}
         <Route element={<RequireGameStarted />}>
           <Route path="/home" element={<HomePage />} />
           <Route path="/quiz/:door" element={<QuizPage />} />
@@ -81,7 +85,6 @@ export default function App() {
           <Route path="/coding/:door" element={<CodingPage />} />
         </Route>
 
-        {/* Admin panel (AdminLayout handles its own session check) */}
         <Route path="/admin" element={<AdminLayout />}>
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsers />} />

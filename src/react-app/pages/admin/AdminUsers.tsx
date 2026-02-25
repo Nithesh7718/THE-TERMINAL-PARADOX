@@ -7,27 +7,25 @@ import {
     ChevronUp,
     ChevronDown,
 } from "lucide-react";
-import {
-    getUsers,
-    createUser,
-    updateUser,
-    deleteUser,
-    type AppUser,
-} from "@/react-app/lib/adminData";
+import { subscribeToUsers, updateUserScore, type FSUser } from "@/react-app/lib/userService";
+import { doc, deleteDoc } from "firebase/firestore";
+import { db } from "@/react-app/lib/firebase";
 import { isAdmin } from "@/react-app/lib/adminAuth";
 import { toast } from "sonner";
 
-type SortKey = keyof AppUser;
+type AppUser = FSUser;
+type SortKey = "name" | "email" | "score" | "roundsCompleted" | "status" | "lastActive";
 type SortDir = "asc" | "desc";
+
+function emailToId(email: string) { return email.toLowerCase().replace(/[^a-z0-9]/g, "_"); }
 
 const EMPTY_FORM = {
     name: "",
     email: "",
-    role: "participant" as AppUser["role"],
     score: 0,
     roundsCompleted: 0,
     lastActive: new Date().toISOString().split("T")[0],
-    status: "active" as AppUser["status"],
+    status: "active" as FSUser["status"],
 };
 
 export default function AdminUsers() {
@@ -41,8 +39,11 @@ export default function AdminUsers() {
     const [deleteTarget, setDeleteTarget] = useState<AppUser | null>(null);
     const adminAccess = isAdmin();
 
-    const reload = () => setUsers(getUsers());
-    useEffect(() => { reload(); }, []);
+    // Real-time Firestore subscription
+    useEffect(() => {
+        const unsub = subscribeToUsers(setUsers);
+        return unsub;
+    }, []);
 
     const filtered = users
         .filter(
@@ -85,25 +86,26 @@ export default function AdminUsers() {
         setModalOpen(true);
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!form.name || !form.email) { toast.error("Name and email are required."); return; }
-        if (editing) {
-            updateUser(editing.id, form);
-            toast.success("User updated successfully.");
-        } else {
-            createUser(form);
-            toast.success("User created successfully.");
-        }
-        setModalOpen(false);
-        reload();
+        try {
+            if (editing) {
+                await updateUserScore(editing.email, form.score, form.roundsCompleted);
+                toast.success("User updated successfully.");
+            } else {
+                toast.info("Ask participant to self-register via the login page.");
+            }
+            setModalOpen(false);
+        } catch { toast.error("Update failed."); }
     };
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (!deleteTarget) return;
-        deleteUser(deleteTarget.id);
-        toast.success(`${deleteTarget.name} removed.`);
-        setDeleteTarget(null);
-        reload();
+        try {
+            await deleteDoc(doc(db, "users", emailToId(deleteTarget.email)));
+            toast.success(`${deleteTarget.name} removed.`);
+            setDeleteTarget(null);
+        } catch { toast.error("Delete failed."); }
     };
 
     const SortIcon = ({ col }: { col: SortKey }) =>
@@ -154,7 +156,6 @@ export default function AdminUsers() {
                                 {([
                                     ["name", "Name"],
                                     ["email", "Email"],
-                                    ["role", "Role"],
                                     ["score", "Score"],
                                     ["roundsCompleted", "Rounds"],
                                     ["status", "Status"],
@@ -186,11 +187,6 @@ export default function AdminUsers() {
                                         </div>
                                     </td>
                                     <td className="px-5 py-4 text-white/50">{user.email}</td>
-                                    <td className="px-5 py-4">
-                                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${user.role === "admin" ? "bg-violet-500/20 text-violet-300" : "bg-white/5 text-white/40"}`}>
-                                            {user.role}
-                                        </span>
-                                    </td>
                                     <td className="px-5 py-4">
                                         <div className="flex items-center gap-2">
                                             <div className="flex-1 max-w-[80px] h-1.5 bg-white/5 rounded-full overflow-hidden">

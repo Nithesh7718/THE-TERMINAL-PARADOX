@@ -1,15 +1,27 @@
-// Centralised game-state helpers (localStorage-based; replace with backend later)
+import { doc, setDoc, onSnapshot, getDoc } from "firebase/firestore";
+import { db } from "./firebase";
 
-const GAME_KEY = "gameStarted";
+const GAME_DOC = doc(db, "config", "gameState");
 
-export function isGameStarted(): boolean {
-    try { return localStorage.getItem(GAME_KEY) === "true"; } catch { return false; }
+/** Start the game — updates Firestore, all browsers notified instantly */
+export async function startGame(): Promise<void> {
+    await setDoc(GAME_DOC, { started: true, startedAt: new Date().toISOString() });
 }
 
-export function startGame(): void {
-    try { localStorage.setItem(GAME_KEY, "true"); } catch { /* ignore */ }
+/** Stop the game — resets to waiting room */
+export async function stopGame(): Promise<void> {
+    await setDoc(GAME_DOC, { started: false, stoppedAt: new Date().toISOString() });
 }
 
-export function stopGame(): void {
-    try { localStorage.setItem(GAME_KEY, "false"); } catch { /* ignore */ }
+/** Subscribe to real-time game state — call returned function to unsubscribe */
+export function subscribeToGameState(callback: (started: boolean) => void): () => void {
+    return onSnapshot(GAME_DOC, (snap) => {
+        callback(snap.exists() ? (snap.data()?.started ?? false) : false);
+    });
+}
+
+/** One-time check (async) — use subscribeToGameState for real-time */
+export async function isGameStarted(): Promise<boolean> {
+    const snap = await getDoc(GAME_DOC);
+    return snap.exists() ? (snap.data()?.started ?? false) : false;
 }
