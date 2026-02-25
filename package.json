@@ -46,9 +46,8 @@
   },
   "scripts": {
     "build": "tsc -b && vite build",
-    "build:static": "vite build --config vite.static.config.ts && node -e \"require('fs').writeFileSync('dist/.nojekyll','')\" && node -e \"require('fs').copyFileSync('dist/index.html','dist/404.html')\"",
-    "build:game": "npm run build:static",
-    "predeploy": "npm run build:static",
+    "build:game": "vite build --config vite.static.config.ts && node -e \"require('fs').writeFileSync('dist/.nojekyll','')\" && node -e \"require('fs').copyFileSync('dist/index.html','dist/404.html')\"",
+    "predeploy": "npm run build:game",
     "deploy": "gh-pages -d dist",
     "cf-typegen": "wrangler types",
     "check": "tsc && vite build && wrangler deploy --dry-run",
