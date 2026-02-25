@@ -32,7 +32,8 @@ export default function WaitingRoom() {
         return unsubscribe;
     }, [navigate]);
 
-    const handleSignOut = () => {
+    const handleSignOut = async () => {
+        if (session?.email) await markUserInactive(session.email);
         clearUserSession();
         navigate("/login", { replace: true });
     };

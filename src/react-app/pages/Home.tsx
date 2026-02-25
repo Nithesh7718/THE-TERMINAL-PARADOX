@@ -7,14 +7,7 @@ import { getUserSession, clearUserSession } from "@/react-app/pages/Login";
 import { clearEntryGate, getExitPassword } from "@/react-app/pages/ExamGate";
 import { toast } from "sonner";
 
-// Read the highest completed round from localStorage (default: 0 = none done)
-function getCompletedRounds(): number {
-  try {
-    return parseInt(localStorage.getItem("completedRound") || "0", 10);
-  } catch {
-    return 0;
-  }
-}
+import { subscribeToUser, markUserInactive, type FSUser } from "@/react-app/lib/userService";
 
 // Stub data for demonstration
 const stubRounds = [{
@@ -95,25 +88,41 @@ export default function Home() {
   const navigate = useNavigate();
   const roundsRef = useRef<HTMLDivElement>(null);
   const [userSession, setUserSession] = useState(() => getUserSession());
+  const [userData, setUserData] = useState<FSUser | null>(null);
+
   // currentRound is 1-based: 1 = only Round 1 open, 2 = Rounds 1+2 open, etc.
-  const [currentRound] = useState(() => (getCompletedRounds() + 1));
+  const [currentRound, setCurrentRound] = useState(1);
   const [exitModalOpen, setExitModalOpen] = useState(false);
   const [exitPwInput, setExitPwInput] = useState("");
   const [exitPwRequired, setExitPwRequired] = useState("");
   const [exitChecking, setExitChecking] = useState(false);
+
+  // Subscribe to real-time user progress
+  useEffect(() => {
+    if (userSession?.email) {
+      const unsub = subscribeToUser(userSession.email, (data) => {
+        if (data) {
+          setUserData(data);
+          setCurrentRound(data.roundsCompleted + 1);
+        }
+      });
+      return unsub;
+    }
+  }, [userSession]);
 
   // Load exit password on mount
   useEffect(() => {
     getExitPassword().then(pw => setExitPwRequired(pw));
   }, []);
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
     if (exitPwRequired) {
       // Exit password is set — show the modal
       setExitModalOpen(true);
       setExitPwInput("");
     } else {
       // No exit password — sign out directly
+      if (userSession?.email) await markUserInactive(userSession.email);
       clearEntryGate();
       clearUserSession();
       setUserSession(null);
@@ -121,9 +130,10 @@ export default function Home() {
     }
   };
 
-  const confirmExit = () => {
+  const confirmExit = async () => {
     setExitChecking(true);
     if (exitPwInput === exitPwRequired) {
+      if (userSession?.email) await markUserInactive(userSession.email);
       clearEntryGate();
       clearUserSession();
       setUserSession(null);
@@ -179,6 +189,7 @@ export default function Home() {
             <>
               <span className="text-sm text-muted-foreground hidden sm:block">
                 👋 {userSession.name}
+                {userData && <span className="ml-2 px-2 py-0.5 bg-primary/20 text-primary rounded-full text-xs font-bold">{userData.score}%</span>}
               </span>
               <Button size="sm" variant="ghost" onClick={handleSignOut} className="gap-1.5 text-muted-foreground hover:text-foreground">
                 <LogOut className="w-3.5 h-3.5" /> Sign Out

@@ -81,3 +81,16 @@ export function subscribeToUsers(callback: (users: FSUser[]) => void): () => voi
         callback(snap.docs.map((d) => d.data() as FSUser));
     });
 }
+
+/** Subscribe to a single user's data in real-time */
+export function subscribeToUser(email: string, callback: (user: FSUser | null) => void): () => void {
+    const id = emailToId(email);
+    const ref = doc(USERS_COL, id);
+    return onSnapshot(ref, (snap) => {
+        if (snap.exists()) {
+            callback(snap.data() as FSUser);
+        } else {
+            callback(null);
+        }
+    });
+}

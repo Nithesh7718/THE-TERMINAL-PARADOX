@@ -23,6 +23,8 @@ import TestCasePanel, {
 } from "@/react-app/components/TestCasePanel";
 import { getDebugQuestionsForDoor } from "@/react-app/data/debugQuestions";
 import { cn } from "@/react-app/lib/utils";
+import { getUserSession } from "@/react-app/pages/Login";
+import { updateUserScore, subscribeToUser } from "@/react-app/lib/userService";
 import {
   Dialog,
   DialogContent,
@@ -48,6 +50,17 @@ export default function DebugPage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showTimeUpDialog, setShowTimeUpDialog] = useState(false);
+  const userSession = getUserSession();
+  const [dbProgress, setDbProgress] = useState(0);
+
+  // Sync current progress from DB
+  useEffect(() => {
+    if (userSession?.email) {
+      return subscribeToUser(userSession.email, (u) => {
+        if (u) setDbProgress(u.roundsCompleted);
+      });
+    }
+  }, [userSession]);
 
   const questions = getDebugQuestionsForDoor(doorNumber);
 
@@ -168,11 +181,18 @@ export default function DebugPage() {
   };
 
   // Save progress and navigate to next round
-  const handleContinueToRound3 = () => {
-    try {
-      const current = parseInt(localStorage.getItem("completedRound") || "0", 10);
-      if (current < 2) localStorage.setItem("completedRound", "2");
-    } catch {/* ignore */ }
+  const handleContinueToRound3 = async () => {
+    if (userSession?.email) {
+      try {
+        // Only increment if we haven't already marked round 2 as done
+        const nextProgress = Math.max(dbProgress, 2);
+        // Average score between current total and existing score
+        await updateUserScore(userSession.email, totalScore, nextProgress);
+        toast.success("Progress saved to database.");
+      } catch (e) {
+        toast.error("Failed to save progress to database.");
+      }
+    }
     navigate("/");
   };
 

@@ -15,6 +15,8 @@ import Timer from "@/react-app/components/Timer";
 import QuizOption from "@/react-app/components/QuizOption";
 import { getQuestionsForDoor } from "@/react-app/data/quizQuestions";
 import { cn } from "@/react-app/lib/utils";
+import { getUserSession } from "@/react-app/pages/Login";
+import { updateUserScore, subscribeToUser } from "@/react-app/lib/userService";
 import {
   Dialog,
   DialogContent,
@@ -38,8 +40,18 @@ export default function QuizPage() {
     new Array(questions.length).fill(null)
   );
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showTimeUpDialog, setShowTimeUpDialog] = useState(false);
+  const userSession = getUserSession();
+  const [dbProgress, setDbProgress] = useState(0);
+
+  // Sync current progress from DB
+  useEffect(() => {
+    if (userSession?.email) {
+      return subscribeToUser(userSession.email, (u) => {
+        if (u) setDbProgress(u.roundsCompleted);
+      });
+    }
+  }, [userSession]);
 
   const handleSelectAnswer = (optionIndex: number) => {
     if (isSubmitted) return;
@@ -73,11 +85,17 @@ export default function QuizPage() {
   };
 
   // Save progress and navigate to next round
-  const handleContinueToRound2 = () => {
-    try {
-      const current = parseInt(localStorage.getItem("completedRound") || "0", 10);
-      if (current < 1) localStorage.setItem("completedRound", "1");
-    } catch {/* ignore */ }
+  const handleContinueToRound2 = async () => {
+    if (userSession?.email) {
+      try {
+        // Only increment if we haven't already marked round 1 as done
+        const nextProgress = Math.max(dbProgress, 1);
+        await updateUserScore(userSession.email, percentage, nextProgress);
+        toast.success("Progress saved to database.");
+      } catch (e) {
+        toast.error("Failed to save progress to database.");
+      }
+    }
     navigate("/");
   };
 

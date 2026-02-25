@@ -23,6 +23,8 @@ import TestCasePanel, {
 } from "@/react-app/components/TestCasePanel";
 import { getCodingQuestionsForDoor } from "@/react-app/data/codingQuestions";
 import { cn } from "@/react-app/lib/utils";
+import { getUserSession } from "@/react-app/pages/Login";
+import { updateUserScore, subscribeToUser } from "@/react-app/lib/userService";
 import {
     Dialog,
     DialogContent,
@@ -47,6 +49,17 @@ export default function CodingPage() {
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [showSubmitDialog, setShowSubmitDialog] = useState(false);
     const [showTimeUpDialog, setShowTimeUpDialog] = useState(false);
+    const userSession = getUserSession();
+    const [dbProgress, setDbProgress] = useState(0);
+
+    // Sync current progress from DB
+    useEffect(() => {
+        if (userSession?.email) {
+            return subscribeToUser(userSession.email, (u) => {
+                if (u) setDbProgress(u.roundsCompleted);
+            });
+        }
+    }, [userSession]);
 
     const questions = getCodingQuestionsForDoor(doorNumber);
 
@@ -142,15 +155,16 @@ export default function CodingPage() {
         toast.success("Coding challenge submitted! Check your results below.");
     };
 
-    const handleContinueHome = () => {
-        try {
-            const current = parseInt(
-                localStorage.getItem("completedRound") || "0",
-                10
-            );
-            if (current < 3) localStorage.setItem("completedRound", "3");
-        } catch {
-            /* ignore */
+    const handleContinueHome = async () => {
+        if (userSession?.email) {
+            try {
+                // Only increment if we haven't already marked round 3 as done
+                const nextProgress = Math.max(dbProgress, 3);
+                await updateUserScore(userSession.email, totalScore, nextProgress);
+                toast.success("Progress saved to database.");
+            } catch (e) {
+                toast.error("Failed to save progress to database.");
+            }
         }
         navigate("/");
     };

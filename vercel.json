@@ -1,6 +1,6 @@
 {
     "installCommand": "npm install --legacy-peer-deps",
-    "buildCommand": "npm run build:static",
+    "buildCommand": "npm run build:game",
     "outputDirectory": "dist",
     "rewrites": [
         {
