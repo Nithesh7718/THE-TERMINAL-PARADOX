@@ -21,7 +21,7 @@ import LanguageSelector, {
 import TestCasePanel, {
   type TestCase,
 } from "@/react-app/components/TestCasePanel";
-import { getDebugQuestionsForDoor } from "@/react-app/data/debugQuestions";
+import { getDebugQuestions, type DebugQuestion } from "@/react-app/lib/questionService";
 import { cn } from "@/react-app/lib/utils";
 import { getUserSession } from "@/react-app/pages/Login";
 import { updateUserScore, subscribeToUser } from "@/react-app/lib/userService";
@@ -62,27 +62,29 @@ export default function DebugPage() {
     }
   }, [userSession]);
 
-  const questions = getDebugQuestionsForDoor(doorNumber);
+  const [questions, setQuestions] = useState<DebugQuestion[]>([]);
+  const [questionsLoaded, setQuestionsLoaded] = useState(false);
+  const [questionStates, setQuestionStates] = useState<{ code: string; testCases: TestCase[]; score: number }[]>([]);
 
-  // Track code and test results for each question
-  const [questionStates, setQuestionStates] = useState<
-    {
-      code: string;
-      testCases: TestCase[];
-      score: number;
-    }[]
-  >(() =>
-    questions.map((q) => ({
-      code: language ? q.buggyCode[language] : "",
-      testCases: q.testCases.map((tc, i) => ({
-        id: i + 1,
-        input: tc.input,
-        expectedOutput: tc.expectedOutput,
-        status: "pending" as const,
-      })),
-      score: 0,
-    }))
-  );
+  // Load questions from Firestore (with static fallback)
+  useEffect(() => {
+    getDebugQuestions(doorNumber).then(qs => {
+      setQuestions(qs);
+      setQuestionStates(
+        qs.map((q) => ({
+          code: "",
+          testCases: q.testCases.map((tc, i) => ({
+            id: i + 1,
+            input: tc.input,
+            expectedOutput: tc.expectedOutput,
+            status: "pending" as const,
+          })),
+          score: 0,
+        }))
+      );
+      setQuestionsLoaded(true);
+    });
+  }, [doorNumber]);
 
   const [selectedTestCase, setSelectedTestCase] = useState(1);
 
@@ -224,6 +226,16 @@ export default function DebugPage() {
 
   const question = questions[currentQuestion];
   const currentState = questionStates[currentQuestion];
+
+  // Loading guard
+  if (!questionsLoaded) return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
+        <p className="text-white/30 text-sm">Loading challenges…</p>
+      </div>
+    </div>
+  );
 
   // Language selection screen
   if (!hasStarted) {

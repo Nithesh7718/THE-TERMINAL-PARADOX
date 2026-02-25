@@ -9,6 +9,7 @@ import {
     Menu,
     X,
     ShieldCheck,
+    BookOpen,
 } from "lucide-react";
 import { getSession, logout, type AdminSession } from "@/react-app/lib/adminAuth";
 import { cn } from "@/react-app/lib/utils";
@@ -44,6 +45,7 @@ export default function AdminLayout({ requireAdmin = false }: AdminLayoutProps) 
         { icon: LayoutDashboard, label: "Dashboard", path: "/admin/dashboard" },
         { icon: Users, label: "Users", path: "/admin/users" },
         { icon: Trophy, label: "Leaderboard", path: "/admin/leaderboard" },
+        { icon: BookOpen, label: "Question Bank", path: "/admin/questions" },
     ];
 
     return (

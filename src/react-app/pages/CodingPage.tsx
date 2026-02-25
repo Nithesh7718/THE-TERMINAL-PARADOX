@@ -21,7 +21,7 @@ import LanguageSelector, {
 import TestCasePanel, {
     type TestCase,
 } from "@/react-app/components/TestCasePanel";
-import { getCodingQuestionsForDoor } from "@/react-app/data/codingQuestions";
+import { getCodingQuestions, type CodingQuestion } from "@/react-app/lib/questionService";
 import { cn } from "@/react-app/lib/utils";
 import { getUserSession } from "@/react-app/pages/Login";
 import { updateUserScore, subscribeToUser } from "@/react-app/lib/userService";
@@ -61,22 +61,31 @@ export default function CodingPage() {
         }
     }, [userSession]);
 
-    const questions = getCodingQuestionsForDoor(doorNumber);
-
+    const [questions, setQuestions] = useState<CodingQuestion[]>([]);
+    const [questionsLoaded, setQuestionsLoaded] = useState(false);
     const [questionStates, setQuestionStates] = useState<
         { code: string; testCases: TestCase[]; score: number }[]
-    >(() =>
-        questions.map((q) => ({
-            code: "",
-            testCases: q.testCases.map((tc, i) => ({
-                id: i + 1,
-                input: tc.input,
-                expectedOutput: tc.expectedOutput,
-                status: "pending" as const,
-            })),
-            score: 0,
-        }))
-    );
+    >([]);
+
+    // Load questions from Firestore (with static fallback)
+    useEffect(() => {
+        getCodingQuestions(doorNumber).then(qs => {
+            setQuestions(qs);
+            setQuestionStates(
+                qs.map((q) => ({
+                    code: "",
+                    testCases: q.testCases.map((tc, i) => ({
+                        id: i + 1,
+                        input: tc.input,
+                        expectedOutput: tc.expectedOutput,
+                        status: "pending" as const,
+                    })),
+                    score: 0,
+                }))
+            );
+            setQuestionsLoaded(true);
+        });
+    }, [doorNumber]);
 
     const [selectedTestCase, setSelectedTestCase] = useState(1);
 
@@ -176,6 +185,16 @@ export default function CodingPage() {
     const question = questions[currentQuestion];
     const currentState = questionStates[currentQuestion];
     const doorNames = ["Array Forge", "String Sanctum", "Graph Gateway"];
+
+    // Loading guard
+    if (!questionsLoaded) return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+                <div className="w-8 h-8 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin" />
+                <p className="text-white/30 text-sm">Loading problems…</p>
+            </div>
+        </div>
+    );
 
     // Language selection screen
     if (!hasStarted) {

@@ -13,7 +13,7 @@ import { Button } from "@/react-app/components/ui/button";
 import { Progress } from "@/react-app/components/ui/progress";
 import Timer from "@/react-app/components/Timer";
 import QuizOption from "@/react-app/components/QuizOption";
-import { getQuestionsForDoor } from "@/react-app/data/quizQuestions";
+import { getQuizQuestions, type QuizQuestion } from "@/react-app/lib/questionService";
 import { cn } from "@/react-app/lib/utils";
 import { getUserSession } from "@/react-app/pages/Login";
 import { updateUserScore, subscribeToUser } from "@/react-app/lib/userService";
@@ -34,15 +34,24 @@ export default function QuizPage() {
   const navigate = useNavigate();
   const doorNumber = parseInt(door || "1");
 
-  const questions = getQuestionsForDoor(doorNumber);
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [questionsLoaded, setQuestionsLoaded] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<(number | null)[]>(
-    new Array(questions.length).fill(null)
-  );
+  const [answers, setAnswers] = useState<(number | null)[]>([]);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showTimeUpDialog, setShowTimeUpDialog] = useState(false);
   const userSession = getUserSession();
   const [dbProgress, setDbProgress] = useState(0);
+
+  // Load questions from Firestore (with static fallback)
+  useEffect(() => {
+    getQuizQuestions(doorNumber).then(qs => {
+      setQuestions(qs);
+      setAnswers(new Array(qs.length).fill(null));
+      setQuestionsLoaded(true);
+    });
+  }, [doorNumber]);
 
   // Sync current progress from DB
   useEffect(() => {
@@ -118,6 +127,15 @@ export default function QuizPage() {
 
   const question = questions[currentQuestion];
   const optionLabels = ["A", "B", "C", "D"];
+
+  if (!questionsLoaded) return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
+        <p className="text-white/30 text-sm">Loading questions…</p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-background">

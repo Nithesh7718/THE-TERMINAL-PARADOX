@@ -11,9 +11,17 @@ import { db } from "@/react-app/lib/firebase";
 function StatCard({ icon: Icon, label, value, sub, color }: { icon: React.ElementType; label: string; value: string | number; sub?: string; color: string }) {
     return (
         <div className="bg-[#0f0f1a] border border-white/5 rounded-2xl p-5 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: `${color}20`, boxShadow: `0 0 20px ${color}20` }}>
-                <Icon className="w-6 h-6" style={{ color }} />
+            <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                data-color={color}
+                ref={(el) => {
+                    if (el) {
+                        el.style.background = `${color}20`;
+                        el.style.boxShadow = `0 0 20px ${color}20`;
+                    }
+                }}
+            >
+                <Icon className="w-6 h-6" ref={(el: SVGSVGElement | null) => { if (el) el.style.color = color; }} />
             </div>
             <div>
                 <p className="text-white/40 text-xs uppercase tracking-wider mb-0.5">{label}</p>
@@ -31,7 +39,7 @@ function BarChart({ data }: { data: { name: string; value: number }[] }) {
     const COLORS = ["#8b5cf6", "#6366f1", "#a78bfa", "#4f46e5", "#7c3aed", "#8b5cf6", "#6366f1", "#a78bfa", "#4f46e5", "#7c3aed"];
     return (
         <div className="w-full overflow-x-auto">
-            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: 320 }}>
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[320px]">
                 {[0, 25, 50, 75, 100].map(v => {
                     const y = 8 + INNER_H - (v / 100) * INNER_H;
                     return <g key={v}>
@@ -269,7 +277,10 @@ export default function AdminDashboard() {
                                 <div className={`w-1.5 h-1.5 rounded-full ${user.status === "active" ? "bg-emerald-400" : "bg-white/20"}`} />
                                 <span className="text-white/30 text-xs hidden sm:block">{user.roundsCompleted}/3</span>
                                 <div className="hidden sm:block w-16 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                                    <div className="h-full bg-violet-500 rounded-full" style={{ width: `${user.score}%` }} />
+                                    <div
+                                        className="h-full bg-violet-500 rounded-full"
+                                        ref={(el) => { if (el) el.style.width = `${user.score}%`; }}
+                                    />
                                 </div>
                                 <span className="text-violet-400 text-sm font-bold">{user.score}%</span>
                             </div>

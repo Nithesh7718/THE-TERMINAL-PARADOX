@@ -19,6 +19,7 @@ import AdminLayout from "@/react-app/pages/admin/AdminLayout";
 import AdminDashboard from "@/react-app/pages/admin/AdminDashboard";
 import AdminUsers from "@/react-app/pages/admin/AdminUsers";
 import AdminLeaderboard from "@/react-app/pages/admin/AdminLeaderboard";
+import QuestionBank from "@/react-app/pages/admin/QuestionBank";
 
 // Auth + state helpers
 import { getUserSession } from "@/react-app/pages/Login";
@@ -105,6 +106,7 @@ export default function App() {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="leaderboard" element={<AdminLeaderboard />} />
+          <Route path="questions" element={<QuestionBank />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />
