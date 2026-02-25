@@ -85,18 +85,19 @@ export default function App() {
 
         <Route path="/admin/login" element={<AdminLogin />} />
 
+        {/* Participant routes — Require SEB for everything after login */}
         <Route element={<RequireUser />}>
-          <Route path="/waiting" element={<WaitingRoom />} />
-          <Route path="/exam-gate" element={<ExamGate />} />
-        </Route>
+          <Route element={<RequireSEB />}>
+            <Route path="/waiting" element={<WaitingRoom />} />
+            <Route path="/exam-gate" element={<ExamGate />} />
 
-        {/* Game pages: requires SEB + game started + entry password */}
-        <Route element={<RequireSEB />}>
-          <Route element={<RequireGameStarted />}>
-            <Route path="/home" element={<HomePage />} />
-            <Route path="/quiz/:door" element={<QuizPage />} />
-            <Route path="/debug/:door" element={<DebugPage />} />
-            <Route path="/coding/:door" element={<CodingPage />} />
+            {/* Game pages: requires game started + entry password */}
+            <Route element={<RequireGameStarted />}>
+              <Route path="/home" element={<HomePage />} />
+              <Route path="/quiz/:door" element={<QuizPage />} />
+              <Route path="/debug/:door" element={<DebugPage />} />
+              <Route path="/coding/:door" element={<CodingPage />} />
+            </Route>
           </Route>
         </Route>
 

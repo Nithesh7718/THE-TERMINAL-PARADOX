@@ -18,19 +18,36 @@ export function isInSEB(): boolean {
   // Method 3: SEB on iOS uses a WKWebView with specific markers
   if (/SEB/i.test(ua)) return true;
 
+  // Method 4: URL fallback flag (from our SEB launch link)
+  if (window.location.search.includes("seb=true")) return true;
+
   return false;
+}
+
+/**
+ * SHA256 hash a string — SEB requires hashed passwords in the config.
+ */
+async function sha256(text: string): Promise<string> {
+  const data = new TextEncoder().encode(text);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
 /**
  * Generate a SEB config XML (.seb) file.
  * 
- * Passwords are NOT embedded — they are checked in-app via Firestore
- * so the admin can change them anytime without redistributing config files.
- * SEB is simply locked (no quit allowed) — exit is controlled in-app.
+ * Includes the hashed quit password so SEB's built-in power button
+ * prompts for it. Also includes Firestore-driven path in-app.
  */
-export function generateSEBConfig(appUrl: string): string {
+export async function generateSEBConfig(
+  appUrl: string,
+  options?: { quitPassword?: string }
+): Promise<string> {
   const base = appUrl.replace(/\/$/, "");
   const domain = base.replace(/^https?:\/\//, "");
+  const quitPw = options?.quitPassword || "";
+  const hashedQuit = quitPw ? await sha256(quitPw) : "";
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
@@ -40,9 +57,14 @@ export function generateSEBConfig(appUrl: string): string {
   <key>startURL</key>
   <string>${base}/login</string>
 
-  <!-- Quit is fully blocked — exit is controlled in-app via Firestore -->
+  <!-- Passwords (SHA256 hashed) -->
+  ${hashedQuit ? `
+  <key>hashedQuitPassword</key>
+  <string>${hashedQuit}</string>
   <key>allowQuit</key>
-  <false/>
+  <true/>` : `
+  <key>allowQuit</key>
+  <false/>`}
 
   <!-- Restrict to exam domain + Firebase only -->
   <key>URLFilterEnable</key>
@@ -105,8 +127,8 @@ export function generateSEBConfig(appUrl: string): string {
 </plist>`;
 }
 
-export function downloadSEBConfig(appUrl: string): void {
-  const xml = generateSEBConfig(appUrl);
+export async function downloadSEBConfig(appUrl: string, options?: { quitPassword?: string }): Promise<void> {
+  const xml = await generateSEBConfig(appUrl, options);
   const blob = new Blob([xml], { type: "application/seb" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

@@ -3,8 +3,10 @@ import { ShieldAlert, Monitor, Download, ExternalLink } from "lucide-react";
 const SEB_DOWNLOAD_URL = "https://safeexambrowser.org/download_en.html";
 
 export default function SEBRequired() {
-    // Convert current URL to SEB protocol: https:// → sebs://
-    const sebUrl = window.location.href.replace(/^https?:\/\//, "sebs://");
+    // Convert current URL to SEB protocol and add a flag for fallback detection
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set("seb", "true");
+    const sebUrl = currentUrl.toString().replace(/^https?:\/\//, "sebs://");
 
     return (
         <div className="min-h-screen bg-background flex items-center justify-center px-4">

@@ -129,8 +129,8 @@ export default function AdminDashboard() {
                     {toggling ? "Updating…" : gameActive ? "Stop Game" : "Start Game"}
                     <span className={`w-2 h-2 rounded-full animate-pulse ${gameActive ? "bg-emerald-400" : "bg-red-400"}`} />
                 </button>
-                <button onClick={() => {
-                    downloadSEBConfig(window.location.origin);
+                <button onClick={async () => {
+                    await downloadSEBConfig(window.location.origin, { quitPassword: quitPw });
                     toast.success("SEB config downloaded!");
                 }}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm bg-blue-600/20 border border-blue-500/40 text-blue-400 hover:bg-blue-600/30 transition-all shadow-lg">
