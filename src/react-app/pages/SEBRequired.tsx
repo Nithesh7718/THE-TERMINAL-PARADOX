@@ -1,8 +1,11 @@
-import { ShieldAlert, Monitor, Download } from "lucide-react";
+import { ShieldAlert, Monitor, Download, ExternalLink } from "lucide-react";
 
 const SEB_DOWNLOAD_URL = "https://safeexambrowser.org/download_en.html";
 
 export default function SEBRequired() {
+    // Convert current URL to SEB protocol: https:// → sebs://
+    const sebUrl = window.location.href.replace(/^https?:\/\//, "sebs://");
+
     return (
         <div className="min-h-screen bg-background flex items-center justify-center px-4">
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -23,13 +26,24 @@ export default function SEBRequired() {
                     Regular browsers are not permitted to ensure exam integrity.
                 </p>
 
+                {/* Auto-launch SEB button */}
+                <a
+                    href={sebUrl}
+                    className="flex items-center justify-center gap-2 w-full px-5 py-3.5 rounded-xl bg-gradient-to-r from-primary to-chart-1 text-primary-foreground font-bold text-sm hover:opacity-90 transition-all shadow-[0_0_20px_rgba(45,212,191,0.25)] mb-4"
+                >
+                    <ExternalLink className="w-4 h-4" />
+                    Launch in Safe Exam Browser
+                </a>
+                <p className="text-xs text-muted-foreground/50 mb-8">
+                    SEB must already be installed. Clicking above will open it automatically.
+                </p>
+
                 <div className="bg-card border border-border rounded-2xl p-6 mb-6 text-left space-y-4">
-                    <h2 className="text-sm font-semibold text-foreground">How to access the exam:</h2>
+                    <h2 className="text-sm font-semibold text-foreground">Don't have SEB installed?</h2>
                     <ol className="space-y-3">
                         {[
-                            { step: "1", text: "Get the .seb config file from your exam administrator" },
-                            { step: "2", text: "Install Safe Exam Browser on your computer" },
-                            { step: "3", text: "Double-click the .seb file — it will open the exam automatically" },
+                            { step: "1", text: "Download & install Safe Exam Browser" },
+                            { step: "2", text: "Come back to this page and click \"Launch in Safe Exam Browser\"" },
                         ].map(({ step, text }) => (
                             <li key={step} className="flex items-start gap-3">
                                 <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
