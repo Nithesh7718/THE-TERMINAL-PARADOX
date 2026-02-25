@@ -1,19 +1,21 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { Terminal, Wifi, LogOut } from "lucide-react";
+import { Terminal, Wifi, LogOut, Megaphone } from "lucide-react";
 import { getUserSession, clearUserSession } from "@/react-app/pages/Login";
 import { subscribeToGameState } from "@/react-app/lib/gameState";
+import { markUserInactive } from "@/react-app/lib/userService";
 import { toast } from "sonner";
 
 export default function WaitingRoom() {
     const navigate = useNavigate();
     const session = getUserSession();
     const [dots, setDots] = useState(".");
+    const [gameState, setGameState] = useState<any>(null);
 
     // Redirect if not logged in
     useEffect(() => {
         if (!session) navigate("/login", { replace: true });
-    }, []);
+    }, [session]);
 
     // Animated dots
     useEffect(() => {
@@ -23,8 +25,9 @@ export default function WaitingRoom() {
 
     // Real-time Firestore subscription — no polling needed
     useEffect(() => {
-        const unsubscribe = subscribeToGameState((started) => {
-            if (started) {
+        const unsubscribe = subscribeToGameState((state) => {
+            setGameState(state);
+            if (state.started) {
                 toast.success("🚀 The game has started! Good luck!");
                 navigate("/exam-gate", { replace: true });
             }
@@ -56,6 +59,13 @@ export default function WaitingRoom() {
                 <h1 className="text-4xl md:text-5xl font-black mb-3 bg-gradient-to-r from-primary via-chart-3 to-chart-1 bg-clip-text text-transparent">
                     THE TERMINAL PARADOX
                 </h1>
+
+                {gameState?.broadcastMessage && (
+                    <div className="mb-8 p-4 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-200 text-sm flex items-center gap-3 animate-bounce">
+                        <Megaphone className="w-4 h-4 shrink-0 text-orange-400" />
+                        <span className="font-medium text-left">"{gameState.broadcastMessage}"</span>
+                    </div>
+                )}
                 <p className="text-muted-foreground mb-12">3 Rounds · 3 Doors · 1 Champion</p>
 
                 <div className="bg-card border border-border rounded-2xl p-8 shadow-[0_0_40px_rgba(45,212,191,0.06)] mb-8">

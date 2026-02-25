@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { Code2, Trophy, Timer, Shield, LogOut } from "lucide-react";
+import { Code2, Trophy, Timer, Shield, LogOut, Megaphone } from "lucide-react";
 import { Button } from "@/react-app/components/ui/button";
 import RoundSection from "@/react-app/components/RoundSection";
 import { getUserSession, clearUserSession } from "@/react-app/pages/Login";
@@ -8,6 +8,7 @@ import { clearEntryGate, getExitPassword } from "@/react-app/pages/ExamGate";
 import { toast } from "sonner";
 
 import { subscribeToUser, markUserInactive, type FSUser } from "@/react-app/lib/userService";
+import { subscribeToGameState, type GameState } from "@/react-app/lib/gameState";
 
 // Stub data for demonstration
 const stubRounds = [{
@@ -92,10 +93,16 @@ export default function Home() {
 
   // currentRound is 1-based: 1 = only Round 1 open, 2 = Rounds 1+2 open, etc.
   const [currentRound, setCurrentRound] = useState(1);
+  const [gameState, setGameState] = useState<GameState | null>(null);
   const [exitModalOpen, setExitModalOpen] = useState(false);
   const [exitPwInput, setExitPwInput] = useState("");
   const [exitPwRequired, setExitPwRequired] = useState("");
   const [exitChecking, setExitChecking] = useState(false);
+
+  // Subscribe to real-time game state (broadcasts, active round)
+  useEffect(() => {
+    return subscribeToGameState(setGameState);
+  }, []);
 
   // Subscribe to real-time user progress
   useEffect(() => {
@@ -103,12 +110,15 @@ export default function Home() {
       const unsub = subscribeToUser(userSession.email, (data) => {
         if (data) {
           setUserData(data);
-          setCurrentRound(data.roundsCompleted + 1);
+          // User round is capped by the admin's globally active round
+          const userRound = data.roundsCompleted + 1;
+          const globalMax = gameState?.activeRound || 3;
+          setCurrentRound(Math.min(userRound, globalMax));
         }
       });
       return unsub;
     }
-  }, [userSession]);
+  }, [userSession, gameState?.activeRound]);
 
   // Load exit password on mount
   useEffect(() => {
@@ -204,6 +214,15 @@ export default function Home() {
           </div>
 
           <h1 className="text-5xl md:text-7xl font-black mb-4 bg-gradient-to-r from-primary via-chart-3 to-accent bg-clip-text text-transparent">THE TERMINAL PARADOX</h1>
+
+          {gameState?.broadcastMessage && (
+            <div className="max-w-md mx-auto mb-8 p-4 rounded-xl bg-primary/10 border border-primary/20 text-primary text-sm flex items-center gap-3 animate-pulse">
+              <Megaphone className="w-5 h-5 shrink-0" />
+              <span className="font-bold">ADMIN:</span>
+              <span className="text-left font-medium">"{gameState.broadcastMessage}"</span>
+            </div>
+          )}
+
           <p className="text-xl md:text-2xl text-muted-foreground mb-2">
             3 Rounds • 3 Doors • 1 Champion
           </p>

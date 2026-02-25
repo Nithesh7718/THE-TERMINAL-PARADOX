@@ -37,20 +37,20 @@ function RequireSEB() {
 /** Requires participant session — syncs game state from Firestore */
 function RequireGameStarted() {
   const session = getUserSession();
-  const [gameStarted, setGameStarted] = useState<boolean | null>(null);
+  const [gameState, setGameState] = useState<any>(null);
 
   useEffect(() => {
-    const unsub = subscribeToGameState(setGameStarted);
+    const unsub = subscribeToGameState(setGameState);
     return unsub;
   }, []);
 
   if (!session) return <Navigate to="/login" replace />;
-  if (gameStarted === null) return (
+  if (gameState === null) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="w-2 h-2 rounded-full bg-primary animate-ping" />
     </div>
   );
-  if (!gameStarted) return <Navigate to="/waiting" replace />;
+  if (!gameState.started) return <Navigate to="/waiting" replace />;
   // Game is started — check entry gate
   if (!hasPassedEntryGate()) return <Navigate to="/exam-gate" replace />;
   return <Outlet />;

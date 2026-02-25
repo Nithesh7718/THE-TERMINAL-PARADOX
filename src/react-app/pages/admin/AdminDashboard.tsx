@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Users, Trophy, Activity, TrendingUp, Star, PlayCircle, StopCircle, Download, ShieldCheck } from "lucide-react";
 import { subscribeToUsers, type FSUser } from "@/react-app/lib/userService";
-import { subscribeToGameState, startGame, stopGame } from "@/react-app/lib/gameState";
+import { subscribeToGameState, startGame, stopGame, sendBroadcast, setActiveRound, type GameState } from "@/react-app/lib/gameState";
 import { toast } from "sonner";
+import { Megaphone, LayoutGrid } from "lucide-react";
 import { downloadSEBConfig } from "@/react-app/lib/sebDetection";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/react-app/lib/firebase";
@@ -57,12 +58,14 @@ function BarChart({ data }: { data: { name: string; value: number }[] }) {
 
 export default function AdminDashboard() {
     const [users, setUsers] = useState<FSUser[]>([]);
-    const [gameActive, setGameActive] = useState(false);
+    const [gameState, setGameState] = useState<GameState>({ started: false, activeRound: 1, broadcastMessage: "" });
     const [toggling, setToggling] = useState(false);
     const [entryPw, setEntryPw] = useState("");
     const [quitPw, setQuitPw] = useState("");
     const [sebSaving, setSebSaving] = useState(false);
     const [sebOpen, setSebOpen] = useState(false);
+    const [broadcastInput, setBroadcastInput] = useState("");
+    const [broadcastSending, setBroadcastSending] = useState(false);
 
     // Real-time users from Firestore
     useEffect(() => {
@@ -72,7 +75,7 @@ export default function AdminDashboard() {
 
     // Real-time game state from Firestore
     useEffect(() => {
-        const unsub = subscribeToGameState(setGameActive);
+        const unsub = subscribeToGameState(setGameState);
         return unsub;
     }, []);
 
@@ -93,7 +96,7 @@ export default function AdminDashboard() {
     const toggleGame = async () => {
         setToggling(true);
         try {
-            if (gameActive) {
+            if (gameState.started) {
                 await stopGame();
                 toast.success("Game stopped. Users returned to waiting room.");
             } else {
@@ -105,6 +108,31 @@ export default function AdminDashboard() {
         } finally {
             setToggling(false);
         }
+    };
+
+    const handleSendBroadcast = async () => {
+        if (!broadcastInput.trim()) return;
+        setBroadcastSending(true);
+        try {
+            await sendBroadcast(broadcastInput);
+            toast.success("Message broadcasted to all participants!");
+            setBroadcastInput("");
+        } catch { toast.error("Failed to send."); }
+        setBroadcastSending(false);
+    };
+
+    const handleClearBroadcast = async () => {
+        try {
+            await sendBroadcast("");
+            toast.success("Broadcast cleared.");
+        } catch { toast.error("Failed to clear."); }
+    };
+
+    const handleRoundChange = async (r: number) => {
+        try {
+            await setActiveRound(r);
+            toast.success(`Active round set to ${r}`);
+        } catch { toast.error("Failed to update round."); }
     };
 
     const totalUsers = users.length;
@@ -121,13 +149,13 @@ export default function AdminDashboard() {
                     <p className="text-white/40 text-sm mt-1">Live overview — updates in real-time via Firebase</p>
                 </div>
                 <button onClick={toggleGame} disabled={toggling}
-                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-60 ${gameActive
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-60 ${gameState.started
                         ? "bg-red-600/20 border border-red-500/40 text-red-400 hover:bg-red-600/30"
                         : "bg-emerald-600/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-600/30"
                         } shadow-lg`}>
-                    {gameActive ? <StopCircle className="w-4 h-4" /> : <PlayCircle className="w-4 h-4" />}
-                    {toggling ? "Updating…" : gameActive ? "Stop Game" : "Start Game"}
-                    <span className={`w-2 h-2 rounded-full animate-pulse ${gameActive ? "bg-emerald-400" : "bg-red-400"}`} />
+                    {gameState.started ? <StopCircle className="w-4 h-4" /> : <PlayCircle className="w-4 h-4" />}
+                    {toggling ? "Updating…" : gameState.started ? "Stop Game" : "Start Game"}
+                    <span className={`w-2 h-2 rounded-full animate-pulse ${gameState.started ? "bg-emerald-400" : "bg-red-400"}`} />
                 </button>
                 <button onClick={async () => {
                     await downloadSEBConfig(window.location.origin, { quitPassword: quitPw });
@@ -187,6 +215,53 @@ export default function AdminDashboard() {
                         </div>
                     </div>
                 )}
+            </div>
+
+            {/* Game Flow & Communication Panel */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Active Round Control */}
+                <div className="bg-[#0f0f1a] border border-white/5 rounded-2xl p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                        <LayoutGrid className="w-4 h-4 text-emerald-400" />
+                        <h3 className="text-white font-semibold text-sm">Exam Flow — Active Round</h3>
+                    </div>
+                    <div className="flex gap-2">
+                        {[1, 2, 3].map(r => (
+                            <button key={r} onClick={() => handleRoundChange(r)}
+                                className={`flex-1 py-3 rounded-xl border font-bold text-sm transition-all ${gameState.activeRound === r
+                                    ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)]"
+                                    : "bg-white/5 border-white/10 text-white/40 hover:text-white/60 hover:border-white/20"
+                                    }`}>
+                                Round {r}
+                            </button>
+                        ))}
+                    </div>
+                    <p className="text-[10px] text-white/20 mt-3 uppercase tracking-tighter">Current participants will be guided to this round</p>
+                </div>
+
+                {/* Broadcast Panel */}
+                <div className="bg-[#0f0f1a] border border-white/5 rounded-2xl p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Megaphone className="w-4 h-4 text-orange-400" />
+                        <h3 className="text-white font-semibold text-sm">Global Broadcast — Live Message</h3>
+                    </div>
+                    <div className="flex gap-2">
+                        <input type="text" value={broadcastInput} onChange={e => setBroadcastInput(e.target.value)}
+                            placeholder="Type a message for all participants..."
+                            onKeyDown={e => e.key === "Enter" && handleSendBroadcast()}
+                            className="flex-1 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/20 focus:outline-none focus:border-orange-500/50 transition-all" />
+                        <button onClick={handleSendBroadcast} disabled={broadcastSending || !broadcastInput.trim()}
+                            className="px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold transition-all disabled:opacity-50">
+                            {broadcastSending ? "…" : "Send"}
+                        </button>
+                    </div>
+                    {gameState.broadcastMessage && (
+                        <div className="mt-3 flex items-center justify-between px-3 py-1.5 rounded-lg bg-white/3 border border-white/5">
+                            <p className="text-xs text-orange-200/60 truncate italic">Live: "{gameState.broadcastMessage}"</p>
+                            <button onClick={handleClearBroadcast} className="text-[10px] text-white/20 hover:text-white/40 font-bold uppercase">Clear</button>
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
