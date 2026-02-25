@@ -26,7 +26,7 @@ export default function WaitingRoom() {
         const unsubscribe = subscribeToGameState((started) => {
             if (started) {
                 toast.success("🚀 The game has started! Good luck!");
-                navigate("/home", { replace: true });
+                navigate("/exam-gate", { replace: true });
             }
         });
         return unsubscribe;

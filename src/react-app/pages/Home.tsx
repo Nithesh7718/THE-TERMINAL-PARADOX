@@ -1,9 +1,11 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Code2, Trophy, Timer, Shield, LogOut } from "lucide-react";
 import { Button } from "@/react-app/components/ui/button";
 import RoundSection from "@/react-app/components/RoundSection";
 import { getUserSession, clearUserSession } from "@/react-app/pages/Login";
+import { clearEntryGate, getExitPassword } from "@/react-app/pages/ExamGate";
+import { toast } from "sonner";
 
 // Read the highest completed round from localStorage (default: 0 = none done)
 function getCompletedRounds(): number {
@@ -95,10 +97,42 @@ export default function Home() {
   const [userSession, setUserSession] = useState(() => getUserSession());
   // currentRound is 1-based: 1 = only Round 1 open, 2 = Rounds 1+2 open, etc.
   const [currentRound] = useState(() => (getCompletedRounds() + 1));
+  const [exitModalOpen, setExitModalOpen] = useState(false);
+  const [exitPwInput, setExitPwInput] = useState("");
+  const [exitPwRequired, setExitPwRequired] = useState("");
+  const [exitChecking, setExitChecking] = useState(false);
+
+  // Load exit password on mount
+  useEffect(() => {
+    getExitPassword().then(pw => setExitPwRequired(pw));
+  }, []);
 
   const handleSignOut = () => {
-    clearUserSession();
-    setUserSession(null);
+    if (exitPwRequired) {
+      // Exit password is set — show the modal
+      setExitModalOpen(true);
+      setExitPwInput("");
+    } else {
+      // No exit password — sign out directly
+      clearEntryGate();
+      clearUserSession();
+      setUserSession(null);
+      navigate("/login", { replace: true });
+    }
+  };
+
+  const confirmExit = () => {
+    setExitChecking(true);
+    if (exitPwInput === exitPwRequired) {
+      clearEntryGate();
+      clearUserSession();
+      setUserSession(null);
+      toast.success("Signed out successfully.");
+      navigate("/login", { replace: true });
+    } else {
+      toast.error("Incorrect exit password.");
+      setExitChecking(false);
+    }
   };
 
   // Compute rounds with correct door statuses based on progress
@@ -209,6 +243,42 @@ export default function Home() {
           </p>
         </div>
       </footer>
+
+      {/* Exit Password Modal */}
+      {exitModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-[0_0_60px_rgba(239,68,68,0.1)]">
+            <h3 className="text-foreground font-bold text-lg mb-2">Exit Password Required</h3>
+            <p className="text-muted-foreground text-sm mb-5">
+              Enter the exit password to sign out of the exam.
+            </p>
+            <input
+              type="password"
+              value={exitPwInput}
+              onChange={(e) => setExitPwInput(e.target.value)}
+              placeholder="Enter exit password"
+              autoFocus
+              onKeyDown={(e) => e.key === "Enter" && confirmExit()}
+              className="w-full px-4 py-3 rounded-xl bg-secondary/50 border border-border text-foreground placeholder-muted-foreground/40 text-sm focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all mb-4"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => setExitModalOpen(false)}
+                className="flex-1 py-2.5 rounded-xl border border-border text-muted-foreground hover:text-foreground text-sm transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmExit}
+                disabled={!exitPwInput || exitChecking}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-sm transition-all disabled:opacity-50"
+              >
+                {exitChecking ? "Checking…" : "Sign Out"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   </div>;
 }

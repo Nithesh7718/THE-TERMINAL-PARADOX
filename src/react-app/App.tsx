@@ -11,6 +11,7 @@ import DebugPage from "@/react-app/pages/DebugPage";
 import CodingPage from "@/react-app/pages/CodingPage";
 import NotFound from "@/react-app/pages/NotFound";
 import SEBRequired from "@/react-app/pages/SEBRequired";
+import ExamGate, { hasPassedEntryGate } from "@/react-app/pages/ExamGate";
 
 // Admin pages
 import AdminLogin from "@/react-app/pages/admin/AdminLogin";
@@ -50,6 +51,8 @@ function RequireGameStarted() {
     </div>
   );
   if (!gameStarted) return <Navigate to="/waiting" replace />;
+  // Game is started — check entry gate
+  if (!hasPassedEntryGate()) return <Navigate to="/exam-gate" replace />;
   return <Outlet />;
 }
 
@@ -84,9 +87,10 @@ export default function App() {
 
         <Route element={<RequireUser />}>
           <Route path="/waiting" element={<WaitingRoom />} />
+          <Route path="/exam-gate" element={<ExamGate />} />
         </Route>
 
-        {/* Game pages: requires participant session + game started + SEB */}
+        {/* Game pages: requires SEB + game started + entry password */}
         <Route element={<RequireSEB />}>
           <Route element={<RequireGameStarted />}>
             <Route path="/home" element={<HomePage />} />
