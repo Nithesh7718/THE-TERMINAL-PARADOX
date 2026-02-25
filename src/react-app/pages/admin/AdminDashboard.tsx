@@ -129,9 +129,9 @@ export default function AdminDashboard() {
                     {toggling ? "Updating…" : gameActive ? "Stop Game" : "Start Game"}
                     <span className={`w-2 h-2 rounded-full animate-pulse ${gameActive ? "bg-emerald-400" : "bg-red-400"}`} />
                 </button>
-                <button onClick={async () => {
-                    await downloadSEBConfig(window.location.origin, { entryPassword: entryPw, quitPassword: quitPw });
-                    toast.success("SEB config downloaded with passwords!");
+                <button onClick={() => {
+                    downloadSEBConfig(window.location.origin);
+                    toast.success("SEB config downloaded!");
                 }}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm bg-blue-600/20 border border-blue-500/40 text-blue-400 hover:bg-blue-600/30 transition-all shadow-lg">
                     <Download className="w-4 h-4" />
@@ -183,7 +183,7 @@ export default function AdminDashboard() {
                                 className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-all disabled:opacity-60">
                                 {sebSaving ? "Saving…" : "Save Passwords"}
                             </button>
-                            <p className="text-xs text-white/20">Passwords are embedded in the downloaded .seb config</p>
+                            <p className="text-xs text-white/20">Changes take effect instantly — no need to redistribute .seb files</p>
                         </div>
                     </div>
                 )}

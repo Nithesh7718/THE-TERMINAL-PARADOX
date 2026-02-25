@@ -7,49 +7,32 @@
  */
 
 export function isInSEB(): boolean {
-    // Method 1: SEB JS API (most reliable)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((window as any).SafeExamBrowser) return true;
+  // Method 1: SEB JS API (most reliable)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if ((window as any).SafeExamBrowser) return true;
 
-    // Method 2: User-Agent (broad match for all SEB versions)
-    const ua = navigator.userAgent;
-    if (/SEB\/|SebCopy|SebBrowser|SafeExamBrowser/i.test(ua)) return true;
+  // Method 2: User-Agent (broad match for all SEB versions)
+  const ua = navigator.userAgent;
+  if (/SEB\/|SebCopy|SebBrowser|SafeExamBrowser/i.test(ua)) return true;
 
-    // Method 3: SEB on iOS uses a WKWebView with specific markers
-    if (/SEB/i.test(ua)) return true;
+  // Method 3: SEB on iOS uses a WKWebView with specific markers
+  if (/SEB/i.test(ua)) return true;
 
-    return false;
+  return false;
 }
 
 /**
- * SHA256 hash a string — SEB requires hashed passwords in the config.
+ * Generate a SEB config XML (.seb) file.
+ * 
+ * Passwords are NOT embedded — they are checked in-app via Firestore
+ * so the admin can change them anytime without redistributing config files.
+ * SEB is simply locked (no quit allowed) — exit is controlled in-app.
  */
-async function sha256(text: string): Promise<string> {
-    const data = new TextEncoder().encode(text);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-}
+export function generateSEBConfig(appUrl: string): string {
+  const base = appUrl.replace(/\/$/, "");
+  const domain = base.replace(/^https?:\/\//, "");
 
-/**
- * Generate a SEB config XML (.seb) file for the given app URL.
- * Passwords are SHA256 hashed as required by SEB.
- */
-export async function generateSEBConfig(
-    appUrl: string,
-    options?: { entryPassword?: string; quitPassword?: string },
-): Promise<string> {
-    const base = appUrl.replace(/\/$/, "");
-    const domain = base.replace(/^https?:\/\//, "");
-
-    const entryPw = options?.entryPassword || "";
-    const quitPw = options?.quitPassword || "";
-
-    // SEB requires SHA256 hashed passwords
-    const hashedEntry = entryPw ? await sha256(entryPw) : "";
-    const hashedQuit = quitPw ? await sha256(quitPw) : "";
-
-    return `<?xml version="1.0" encoding="UTF-8"?>
+  return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -57,16 +40,11 @@ export async function generateSEBConfig(
   <key>startURL</key>
   <string>${base}/login</string>
 
-  <!-- Passwords (SHA256 hashed) -->
-  ${hashedEntry ? `<key>hashedAdminPassword</key>
-  <string>${hashedEntry}</string>` : ""}
-  ${hashedQuit ? `<key>hashedQuitPassword</key>
-  <string>${hashedQuit}</string>
+  <!-- Quit is fully blocked — exit is controlled in-app via Firestore -->
   <key>allowQuit</key>
-  <true/>` : `<key>allowQuit</key>
-  <false/>`}
+  <false/>
 
-  <!-- Restrict to exam domain only -->
+  <!-- Restrict to exam domain + Firebase only -->
   <key>URLFilterEnable</key>
   <true/>
   <key>URLFilterEnableContentFilter</key>
@@ -116,28 +94,24 @@ export async function generateSEBConfig(
   <key>enableTouchExit</key><false/>
   <key>quitURLConfirm</key><true/>
 
-  <!-- Disable right-click and keyboard shortcuts -->
+  <!-- Disable right-click -->
   <key>browserContextMenuURL</key><false/>
 
   <!-- Zoom -->
   <key>zoomMode</key><integer>0</integer>
 
-  <!-- SEB version requirements -->
   <key>sebMode</key><integer>0</integer>
 </dict>
 </plist>`;
 }
 
-export async function downloadSEBConfig(
-    appUrl: string,
-    options?: { entryPassword?: string; quitPassword?: string },
-): Promise<void> {
-    const xml = await generateSEBConfig(appUrl, options);
-    const blob = new Blob([xml], { type: "application/seb" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "terminal-paradox.seb";
-    a.click();
-    URL.revokeObjectURL(url);
+export function downloadSEBConfig(appUrl: string): void {
+  const xml = generateSEBConfig(appUrl);
+  const blob = new Blob([xml], { type: "application/seb" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "terminal-paradox.seb";
+  a.click();
+  URL.revokeObjectURL(url);
 }
