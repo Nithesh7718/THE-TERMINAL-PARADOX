@@ -19,9 +19,10 @@ export interface FSUser {
 
 const USERS_COL = collection(db, "users");
 
-// Sanitise email → valid Firestore doc ID
+// Sanitise email → valid Firestore doc ID (must be consistent everywhere)
 function emailToId(email: string) {
-    return email.toLowerCase().replace(/[^a-z0-9]/g, "_");
+    if (!email) return "";
+    return email.trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
 }
 
 /** Register a new participant */
@@ -42,7 +43,8 @@ export async function registerUser(name: string, email: string, password: string
 
 /** Validate login credentials */
 export async function loginUser(email: string, password: string): Promise<FSUser> {
-    const ref = doc(USERS_COL, emailToId(email));
+    const id = emailToId(email);
+    const ref = doc(USERS_COL, id);
     const snap = await getDoc(ref);
     if (!snap.exists()) throw new Error("No account found. Please register.");
     const user = snap.data() as FSUser;
