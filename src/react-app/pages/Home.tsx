@@ -104,21 +104,19 @@ export default function Home() {
     return subscribeToGameState(setGameState);
   }, []);
 
-  // Subscribe to real-time user progress
+  // Subscribe to real-time user progress — round unlocks automatically based on completion
   useEffect(() => {
     if (userSession?.email) {
       const unsub = subscribeToUser(userSession.email, (data) => {
         if (data) {
           setUserData(data);
-          // User round is capped by the admin's globally active round
-          const userRound = data.roundsCompleted + 1;
-          const globalMax = gameState?.activeRound || 3;
-          setCurrentRound(Math.min(userRound, globalMax));
+          // Round 1 always open; Round 2 opens after completing Round 1, etc.
+          setCurrentRound(data.roundsCompleted + 1);
         }
       });
       return unsub;
     }
-  }, [userSession, gameState?.activeRound]);
+  }, [userSession]);
 
   // Load exit password on mount
   useEffect(() => {

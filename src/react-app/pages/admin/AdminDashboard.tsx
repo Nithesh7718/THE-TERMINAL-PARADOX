@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { Users, Trophy, Activity, TrendingUp, Star, PlayCircle, StopCircle, Download, ShieldCheck } from "lucide-react";
 import { subscribeToUsers, type FSUser } from "@/react-app/lib/userService";
-import { subscribeToGameState, startGame, stopGame, sendBroadcast, setActiveRound, type GameState } from "@/react-app/lib/gameState";
+import { subscribeToGameState, startGame, stopGame, sendBroadcast, type GameState } from "@/react-app/lib/gameState";
 import { toast } from "sonner";
-import { Megaphone, LayoutGrid } from "lucide-react";
+import { Megaphone } from "lucide-react";
 import { downloadSEBConfig } from "@/react-app/lib/sebDetection";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/react-app/lib/firebase";
@@ -128,12 +128,6 @@ export default function AdminDashboard() {
         } catch { toast.error("Failed to clear."); }
     };
 
-    const handleRoundChange = async (r: number) => {
-        try {
-            await setActiveRound(r);
-            toast.success(`Active round set to ${r}`);
-        } catch { toast.error("Failed to update round."); }
-    };
 
     const totalUsers = users.length;
     const activeSessions = users.filter(u => u.status === "active").length;
@@ -217,51 +211,28 @@ export default function AdminDashboard() {
                 )}
             </div>
 
-            {/* Game Flow & Communication Panel */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Active Round Control */}
-                <div className="bg-[#0f0f1a] border border-white/5 rounded-2xl p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                        <LayoutGrid className="w-4 h-4 text-emerald-400" />
-                        <h3 className="text-white font-semibold text-sm">Exam Flow — Active Round</h3>
-                    </div>
-                    <div className="flex gap-2">
-                        {[1, 2, 3].map(r => (
-                            <button key={r} onClick={() => handleRoundChange(r)}
-                                className={`flex-1 py-3 rounded-xl border font-bold text-sm transition-all ${gameState.activeRound === r
-                                    ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)]"
-                                    : "bg-white/5 border-white/10 text-white/40 hover:text-white/60 hover:border-white/20"
-                                    }`}>
-                                Round {r}
-                            </button>
-                        ))}
-                    </div>
-                    <p className="text-[10px] text-white/20 mt-3 uppercase tracking-tighter">Current participants will be guided to this round</p>
+            {/* Broadcast Panel — full width now */}
+            <div className="bg-[#0f0f1a] border border-white/5 rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-4">
+                    <Megaphone className="w-4 h-4 text-orange-400" />
+                    <h3 className="text-white font-semibold text-sm">Global Broadcast — Live Message</h3>
                 </div>
-
-                {/* Broadcast Panel */}
-                <div className="bg-[#0f0f1a] border border-white/5 rounded-2xl p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                        <Megaphone className="w-4 h-4 text-orange-400" />
-                        <h3 className="text-white font-semibold text-sm">Global Broadcast — Live Message</h3>
-                    </div>
-                    <div className="flex gap-2">
-                        <input type="text" value={broadcastInput} onChange={e => setBroadcastInput(e.target.value)}
-                            placeholder="Type a message for all participants..."
-                            onKeyDown={e => e.key === "Enter" && handleSendBroadcast()}
-                            className="flex-1 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/20 focus:outline-none focus:border-orange-500/50 transition-all" />
-                        <button onClick={handleSendBroadcast} disabled={broadcastSending || !broadcastInput.trim()}
-                            className="px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold transition-all disabled:opacity-50">
-                            {broadcastSending ? "…" : "Send"}
-                        </button>
-                    </div>
-                    {gameState.broadcastMessage && (
-                        <div className="mt-3 flex items-center justify-between px-3 py-1.5 rounded-lg bg-white/3 border border-white/5">
-                            <p className="text-xs text-orange-200/60 truncate italic">Live: "{gameState.broadcastMessage}"</p>
-                            <button onClick={handleClearBroadcast} className="text-[10px] text-white/20 hover:text-white/40 font-bold uppercase">Clear</button>
-                        </div>
-                    )}
+                <div className="flex gap-2">
+                    <input type="text" value={broadcastInput} onChange={e => setBroadcastInput(e.target.value)}
+                        placeholder="Type a message for all participants..."
+                        onKeyDown={e => e.key === "Enter" && handleSendBroadcast()}
+                        className="flex-1 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/20 focus:outline-none focus:border-orange-500/50 transition-all" />
+                    <button onClick={handleSendBroadcast} disabled={broadcastSending || !broadcastInput.trim()}
+                        className="px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold transition-all disabled:opacity-50">
+                        {broadcastSending ? "…" : "Send"}
+                    </button>
                 </div>
+                {gameState.broadcastMessage && (
+                    <div className="mt-3 flex items-center justify-between px-3 py-1.5 rounded-lg bg-white/3 border border-white/5">
+                        <p className="text-xs text-orange-200/60 truncate italic">Live: "{gameState.broadcastMessage}"</p>
+                        <button onClick={handleClearBroadcast} className="text-[10px] text-white/20 hover:text-white/40 font-bold uppercase">Clear</button>
+                    </div>
+                )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
