@@ -22,17 +22,32 @@ export function isInSEB(): boolean {
 }
 
 /**
- * Generate a SEB config XML (.seb) file for the given app URL.
- * Includes optional entry/quit passwords set by admin.
+ * SHA256 hash a string — SEB requires hashed passwords in the config.
  */
-export function generateSEBConfig(
+async function sha256(text: string): Promise<string> {
+    const data = new TextEncoder().encode(text);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Generate a SEB config XML (.seb) file for the given app URL.
+ * Passwords are SHA256 hashed as required by SEB.
+ */
+export async function generateSEBConfig(
     appUrl: string,
     options?: { entryPassword?: string; quitPassword?: string },
-): string {
+): Promise<string> {
     const base = appUrl.replace(/\/$/, "");
     const domain = base.replace(/^https?:\/\//, "");
+
     const entryPw = options?.entryPassword || "";
     const quitPw = options?.quitPassword || "";
+
+    // SEB requires SHA256 hashed passwords
+    const hashedEntry = entryPw ? await sha256(entryPw) : "";
+    const hashedQuit = quitPw ? await sha256(quitPw) : "";
 
     return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
@@ -42,11 +57,11 @@ export function generateSEBConfig(
   <key>startURL</key>
   <string>${base}/login</string>
 
-  <!-- Passwords -->
-  ${entryPw ? `<key>hashedAdminPassword</key>
-  <string>${entryPw}</string>` : ""}
-  ${quitPw ? `<key>hashedQuitPassword</key>
-  <string>${quitPw}</string>
+  <!-- Passwords (SHA256 hashed) -->
+  ${hashedEntry ? `<key>hashedAdminPassword</key>
+  <string>${hashedEntry}</string>` : ""}
+  ${hashedQuit ? `<key>hashedQuitPassword</key>
+  <string>${hashedQuit}</string>
   <key>allowQuit</key>
   <true/>` : `<key>allowQuit</key>
   <false/>`}
@@ -113,11 +128,11 @@ export function generateSEBConfig(
 </plist>`;
 }
 
-export function downloadSEBConfig(
+export async function downloadSEBConfig(
     appUrl: string,
     options?: { entryPassword?: string; quitPassword?: string },
-): void {
-    const xml = generateSEBConfig(appUrl, options);
+): Promise<void> {
+    const xml = await generateSEBConfig(appUrl, options);
     const blob = new Blob([xml], { type: "application/seb" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
