@@ -1,6 +1,7 @@
 import {
     collection, doc, setDoc, getDoc, updateDoc,
     onSnapshot, query, orderBy, serverTimestamp,
+    where, getDocs
 } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -44,8 +45,19 @@ export async function registerUser(name: string, email: string, password: string
 /** Validate login credentials */
 export async function loginUser(email: string, password: string): Promise<FSUser> {
     const id = emailToId(email);
-    const ref = doc(USERS_COL, id);
-    const snap = await getDoc(ref);
+    let ref = doc(USERS_COL, id);
+    let snap = await getDoc(ref);
+
+    // If not found by direct ID (sanitised), try a more robust query on the 'email' field
+    if (!snap.exists()) {
+        const q = query(USERS_COL, where("email", "==", email.trim().toLowerCase()));
+        const querySnap = await getDocs(q);
+        if (!querySnap.empty) {
+            snap = querySnap.docs[0];
+            ref = snap.ref; // Use the actual ref for updating
+        }
+    }
+
     if (!snap.exists()) throw new Error("No account found. Please register.");
     const user = snap.data() as FSUser;
     if (user.password !== password) throw new Error("Incorrect password.");
