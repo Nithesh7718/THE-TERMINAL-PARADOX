@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
-import { Users, Trophy, Activity, TrendingUp, Star, PlayCircle, StopCircle, Download } from "lucide-react";
+import { Users, Trophy, Activity, TrendingUp, Star, PlayCircle, StopCircle, Download, ShieldCheck } from "lucide-react";
 import { subscribeToUsers, type FSUser } from "@/react-app/lib/userService";
 import { subscribeToGameState, startGame, stopGame } from "@/react-app/lib/gameState";
 import { toast } from "sonner";
 import { downloadSEBConfig } from "@/react-app/lib/sebDetection";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "@/react-app/lib/firebase";
 
 function StatCard({ icon: Icon, label, value, sub, color }: { icon: React.ElementType; label: string; value: string | number; sub?: string; color: string }) {
     return (
@@ -57,6 +59,10 @@ export default function AdminDashboard() {
     const [users, setUsers] = useState<FSUser[]>([]);
     const [gameActive, setGameActive] = useState(false);
     const [toggling, setToggling] = useState(false);
+    const [entryPw, setEntryPw] = useState("");
+    const [quitPw, setQuitPw] = useState("");
+    const [sebSaving, setSebSaving] = useState(false);
+    const [sebOpen, setSebOpen] = useState(false);
 
     // Real-time users from Firestore
     useEffect(() => {
@@ -68,6 +74,20 @@ export default function AdminDashboard() {
     useEffect(() => {
         const unsub = subscribeToGameState(setGameActive);
         return unsub;
+    }, []);
+
+    // Load SEB settings from Firestore
+    useEffect(() => {
+        (async () => {
+            try {
+                const snap = await getDoc(doc(db, "config", "sebSettings"));
+                if (snap.exists()) {
+                    const d = snap.data();
+                    setEntryPw(d.entryPassword || "");
+                    setQuitPw(d.quitPassword || "");
+                }
+            } catch { /* first run, no settings yet */ }
+        })();
     }, []);
 
     const toggleGame = async () => {
@@ -109,11 +129,64 @@ export default function AdminDashboard() {
                     {toggling ? "Updating…" : gameActive ? "Stop Game" : "Start Game"}
                     <span className={`w-2 h-2 rounded-full animate-pulse ${gameActive ? "bg-emerald-400" : "bg-red-400"}`} />
                 </button>
-                <button onClick={() => { downloadSEBConfig(window.location.origin); toast.success("SEB config downloaded! Distribute to participants."); }}
+                <button onClick={() => {
+                    downloadSEBConfig(window.location.origin, { entryPassword: entryPw, quitPassword: quitPw });
+                    toast.success("SEB config downloaded with passwords!");
+                }}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm bg-blue-600/20 border border-blue-500/40 text-blue-400 hover:bg-blue-600/30 transition-all shadow-lg">
                     <Download className="w-4 h-4" />
                     Download SEB Config
                 </button>
+            </div>
+
+            {/* SEB Settings Panel */}
+            <div className="bg-[#0f0f1a] border border-white/5 rounded-2xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-blue-400" />
+                        <h3 className="text-white font-semibold text-sm">SEB Security Settings</h3>
+                    </div>
+                    <button onClick={() => setSebOpen(!sebOpen)}
+                        className="text-xs text-white/40 hover:text-white/60 transition-colors">
+                        {sebOpen ? "Collapse" : "Expand"}
+                    </button>
+                </div>
+                {sebOpen && (
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">
+                                    Entry Password <span className="normal-case text-white/20">(to start exam)</span>
+                                </label>
+                                <input type="text" value={entryPw} onChange={e => setEntryPw(e.target.value)}
+                                    placeholder="Leave empty for no password"
+                                    className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/20 focus:outline-none focus:border-blue-500/50 transition-all" />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">
+                                    Quit Password <span className="normal-case text-white/20">(to exit SEB)</span>
+                                </label>
+                                <input type="text" value={quitPw} onChange={e => setQuitPw(e.target.value)}
+                                    placeholder="Leave empty to block quitting"
+                                    className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/20 focus:outline-none focus:border-blue-500/50 transition-all" />
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button onClick={async () => {
+                                setSebSaving(true);
+                                try {
+                                    await setDoc(doc(db, "config", "sebSettings"), { entryPassword: entryPw, quitPassword: quitPw });
+                                    toast.success("SEB passwords saved to Firebase.");
+                                } catch { toast.error("Failed to save."); }
+                                setSebSaving(false);
+                            }} disabled={sebSaving}
+                                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-all disabled:opacity-60">
+                                {sebSaving ? "Saving…" : "Save Passwords"}
+                            </button>
+                            <p className="text-xs text-white/20">Passwords are embedded in the downloaded .seb config</p>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">

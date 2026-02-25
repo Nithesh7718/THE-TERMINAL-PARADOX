@@ -1,22 +1,39 @@
 /**
  * Safe Exam Browser (SEB) detection utilities.
- * SEB injects its name into the User-Agent string.
- *   - Windows / macOS: "SebCopy/<version>"
- *   - iOS:             "SebBrowser/<version>"
+ *
+ * Detection methods (in order of reliability):
+ *   1. SEB's own JS API:  window.SafeExamBrowser
+ *   2. User-Agent string: "SEB", "SebCopy", "SebBrowser", "SafeExamBrowser"
  */
 
 export function isInSEB(): boolean {
-    return /SebCopy|SebBrowser|SafeExamBrowser/i.test(navigator.userAgent);
+    // Method 1: SEB JS API (most reliable)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((window as any).SafeExamBrowser) return true;
+
+    // Method 2: User-Agent (broad match for all SEB versions)
+    const ua = navigator.userAgent;
+    if (/SEB\/|SebCopy|SebBrowser|SafeExamBrowser/i.test(ua)) return true;
+
+    // Method 3: SEB on iOS uses a WKWebView with specific markers
+    if (/SEB/i.test(ua)) return true;
+
+    return false;
 }
 
 /**
  * Generate a SEB config XML (.seb) file for the given app URL.
- * Admins download this and distribute it to participants.
+ * Includes optional entry/quit passwords set by admin.
  */
-export function generateSEBConfig(appUrl: string): string {
+export function generateSEBConfig(
+    appUrl: string,
+    options?: { entryPassword?: string; quitPassword?: string },
+): string {
     const base = appUrl.replace(/\/$/, "");
-    // strip protocol for allowedURLs pattern
     const domain = base.replace(/^https?:\/\//, "");
+    const entryPw = options?.entryPassword || "";
+    const quitPw = options?.quitPassword || "";
+
     return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -24,6 +41,15 @@ export function generateSEBConfig(appUrl: string): string {
 <dict>
   <key>startURL</key>
   <string>${base}/login</string>
+
+  <!-- Passwords -->
+  ${entryPw ? `<key>hashedAdminPassword</key>
+  <string>${entryPw}</string>` : ""}
+  ${quitPw ? `<key>hashedQuitPassword</key>
+  <string>${quitPw}</string>
+  <key>allowQuit</key>
+  <true/>` : `<key>allowQuit</key>
+  <false/>`}
 
   <!-- Restrict to exam domain only -->
   <key>URLFilterEnable</key>
@@ -73,7 +99,6 @@ export function generateSEBConfig(appUrl: string): string {
   <!-- Kiosk / lockdown settings -->
   <key>showTaskBar</key><false/>
   <key>enableTouchExit</key><false/>
-  <key>allowQuit</key><false/>
   <key>quitURLConfirm</key><true/>
 
   <!-- Disable right-click and keyboard shortcuts -->
@@ -88,8 +113,11 @@ export function generateSEBConfig(appUrl: string): string {
 </plist>`;
 }
 
-export function downloadSEBConfig(appUrl: string): void {
-    const xml = generateSEBConfig(appUrl);
+export function downloadSEBConfig(
+    appUrl: string,
+    options?: { entryPassword?: string; quitPassword?: string },
+): void {
+    const xml = generateSEBConfig(appUrl, options);
     const blob = new Blob([xml], { type: "application/seb" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
