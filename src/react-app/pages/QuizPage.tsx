@@ -43,7 +43,7 @@ export default function QuizPage() {
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showTimeUpDialog, setShowTimeUpDialog] = useState(false);
   const userSession = getUserSession();
-  const [dbProgress, setDbProgress] = useState(0);
+  const [dbProgress, setDbProgress] = useState<number | null>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
 
   // Load questions from Firestore (with static fallback)
@@ -64,10 +64,20 @@ export default function QuizPage() {
   useEffect(() => {
     if (userSession?.email) {
       return subscribeToUser(userSession.email, (u) => {
-        if (u) setDbProgress(u.roundsCompleted);
+        setDbProgress(u ? u.roundsCompleted : 0);
       });
+    } else {
+      setDbProgress(0);
     }
   }, [userSession]);
+
+  // ── Round gating: redirect if admin hasn't opened Round 1 ──────────
+  useEffect(() => {
+    if (gameState && (gameState.activeRound ?? 1) < 1) {
+      toast.error("Round 1 hasn't started yet.");
+      navigate("/", { replace: true });
+    }
+  }, [gameState, navigate]);
 
   const handleSelectAnswer = (optionIndex: number) => {
     if (isSubmitted) return;
@@ -90,6 +100,8 @@ export default function QuizPage() {
 
   // Passing grade from game state or fallback
   const passingGrade = gameState?.passingGrades?.[1] ?? 50;
+  // Re-attempt guard
+  const alreadyCompleted = dbProgress !== null && dbProgress >= 1;
 
   // Save progress immediately — called on submit AND time-up so back-button never loses data
   const saveProgress = useCallback(async (pct: number) => {
@@ -97,7 +109,7 @@ export default function QuizPage() {
     try {
       // ONLY increment roundsCompleted if they passed!
       const passed = pct >= passingGrade;
-      const nextProgress = passed ? Math.max(dbProgress, 1) : dbProgress;
+      const nextProgress = passed ? Math.max(dbProgress ?? 0, 1) : (dbProgress ?? 0);
       await updateUserScore(userSession.email, 1, pct, nextProgress);
     } catch {
       toast.error("Failed to save progress.");
@@ -147,7 +159,7 @@ export default function QuizPage() {
   const question = questions[currentQuestion];
   const optionLabels = ["A", "B", "C", "D"];
 
-  if (!questionsLoaded) return (
+  if (!questionsLoaded || dbProgress === null) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="flex flex-col items-center gap-3">
         <div className="w-8 h-8 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
@@ -155,6 +167,22 @@ export default function QuizPage() {
       </div>
     </div>
   );
+
+  // Already completed this round — show locked banner
+  if (alreadyCompleted && !isSubmitted) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-card border border-border rounded-2xl p-10 text-center">
+          <CheckCircle2 className="w-14 h-14 text-chart-1 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-foreground mb-2">Already Completed</h2>
+          <p className="text-muted-foreground mb-6">
+            You've already submitted Round 1. Your score has been saved.
+          </p>
+          <Button onClick={() => navigate("/")}>Back to Home</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -194,6 +222,7 @@ export default function QuizPage() {
             <Timer
               initialMinutes={QUIZ_TIME_MINUTES}
               onTimeUp={handleTimeUp}
+              storageKey={`quiz_d${doorNumber}`}
             />
           )}
         </header>
@@ -223,11 +252,7 @@ export default function QuizPage() {
                 "flex items-center justify-center",
                 currentQuestion === index && "ring-2 ring-primary ring-offset-2 ring-offset-background",
                 answers[index] !== null
-                  ? isSubmitted
-                    ? answers[index] === questions[index].correctAnswer
-                      ? "bg-chart-1/20 text-chart-1 border border-chart-1/30"
-                      : "bg-destructive/20 text-destructive border border-destructive/30"
-                    : "bg-primary/20 text-primary border border-primary/30"
+                  ? "bg-primary/20 text-primary border border-primary/30"
                   : "bg-secondary text-muted-foreground border border-border"
               )}
             >
@@ -254,8 +279,8 @@ export default function QuizPage() {
                 label={optionLabels[index]}
                 text={option}
                 isSelected={answers[currentQuestion] === index}
-                isCorrect={index === question.correctAnswer}
-                isRevealed={isSubmitted}
+                isCorrect={false}
+                isRevealed={false}
                 onClick={() => handleSelectAnswer(index)}
                 disabled={isSubmitted}
               />

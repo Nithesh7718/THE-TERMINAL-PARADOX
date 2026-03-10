@@ -10,6 +10,9 @@ import {
   ArrowLeft,
   CheckCircle2,
   AlertCircle,
+  Loader2,
+  Clock,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/react-app/components/ui/button";
 import { Progress } from "@/react-app/components/ui/progress";
@@ -18,9 +21,6 @@ import CodeEditor from "@/react-app/components/CodeEditor";
 import LanguageSelector, {
   type Language,
 } from "@/react-app/components/LanguageSelector";
-import TestCasePanel, {
-  type TestCase,
-} from "@/react-app/components/TestCasePanel";
 import { getDebugQuestions, type DebugQuestion } from "@/react-app/lib/questionService";
 import { cn } from "@/react-app/lib/utils";
 import { getUserSession } from "@/react-app/pages/Login";
@@ -33,10 +33,28 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/react-app/components/ui/dialog";
-
 import { subscribeToGameState, type GameState } from "@/react-app/lib/gameState";
+import { runCode } from "@/react-app/lib/judge0";
 
 const DEBUG_TIME_MINUTES = 15;
+
+type TCStatus = "pending" | "running" | "passed" | "failed" | "error";
+
+interface TestCaseState {
+  input: string;
+  expectedOutput: string;
+  actualOutput: string;
+  status: TCStatus;
+  errorMessage?: string;
+  statusLabel?: string;
+}
+
+interface QuestionState {
+  code: string;
+  testCases: TestCaseState[];
+  score: number;
+  isRunning: boolean;
+}
 
 export default function DebugPage() {
   const { door } = useParams();
@@ -46,68 +64,75 @@ export default function DebugPage() {
   const [language, setLanguage] = useState<Language | null>(null);
   const [hasStarted, setHasStarted] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [selectedTestCase, setSelectedTestCase] = useState(0);
   const [showHint, setShowHint] = useState(false);
   const [hintsUsed, setHintsUsed] = useState<Set<number>>(new Set());
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showTimeUpDialog, setShowTimeUpDialog] = useState(false);
   const userSession = getUserSession();
-  const [dbProgress, setDbProgress] = useState(0);
+  const [dbProgress, setDbProgress] = useState<number | null>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
 
-  // Sync game state for passing grades
   useEffect(() => {
     return subscribeToGameState(setGameState);
   }, []);
 
-  // Sync current progress from DB
   useEffect(() => {
     if (userSession?.email) {
       return subscribeToUser(userSession.email, (u) => {
-        if (u) setDbProgress(u.roundsCompleted);
+        setDbProgress(u ? u.roundsCompleted : 0);
       });
+    } else {
+      setDbProgress(0);
     }
   }, [userSession]);
 
+  // ── Round gating: Round 2 needs activeRound >= 2 ───────────────────
+  useEffect(() => {
+    if (gameState && (gameState.activeRound ?? 1) < 2) {
+      toast.error("Round 2 hasn't started yet. Complete Round 1 first.");
+      navigate("/", { replace: true });
+    }
+  }, [gameState, navigate]);
+
   const [questions, setQuestions] = useState<DebugQuestion[]>([]);
   const [questionsLoaded, setQuestionsLoaded] = useState(false);
-  const [questionStates, setQuestionStates] = useState<{ code: string; testCases: TestCase[]; score: number }[]>([]);
+  const [questionStates, setQuestionStates] = useState<QuestionState[]>([]);
 
-  // Load questions from Firestore (with static fallback)
   useEffect(() => {
     getDebugQuestions(doorNumber).then(qs => {
       setQuestions(qs);
       setQuestionStates(
         qs.map((q) => ({
           code: "",
-          testCases: q.testCases.map((tc, i) => ({
-            id: i + 1,
+          testCases: q.testCases.map((tc) => ({
             input: tc.input,
             expectedOutput: tc.expectedOutput,
-            status: "pending" as const,
+            actualOutput: "",
+            status: "pending" as TCStatus,
           })),
           score: 0,
+          isRunning: false,
         }))
       );
       setQuestionsLoaded(true);
     });
   }, [doorNumber]);
 
-  const [selectedTestCase, setSelectedTestCase] = useState(1);
-
   const handleStartChallenge = () => {
     if (!language) return;
-    // Initialize code for all questions with selected language
     setQuestionStates(
       questions.map((q) => ({
         code: q.buggyCode[language],
-        testCases: q.testCases.map((tc, i) => ({
-          id: i + 1,
+        testCases: q.testCases.map((tc) => ({
           input: tc.input,
           expectedOutput: tc.expectedOutput,
-          status: "pending" as const,
+          actualOutput: "",
+          status: "pending" as TCStatus,
         })),
         score: 0,
+        isRunning: false,
       }))
     );
     setHasStarted(true);
@@ -115,137 +140,123 @@ export default function DebugPage() {
 
   const handleCodeChange = (code: string) => {
     setQuestionStates((prev) => {
-      const newStates = [...prev];
-      newStates[currentQuestion] = {
-        ...newStates[currentQuestion],
-        code,
-      };
-      return newStates;
+      const next = [...prev];
+      next[currentQuestion] = { ...next[currentQuestion], code };
+      return next;
     });
   };
 
-  const handleRunTests = () => {
-    // Simulate running tests (in production, this would call Judge0 API)
+  // ── Real Judge0 execution ──────────────────────────────────────────
+  const handleRunTests = async () => {
+    if (!language) return;
+    const qIdx = currentQuestion;
+    const state = questionStates[qIdx];
+
+    // Mark all as running
     setQuestionStates((prev) => {
-      const newStates = [...prev];
-      const currentState = newStates[currentQuestion];
-
-      // Set all to running
-      const runningTestCases = currentState.testCases.map((tc) => ({
-        ...tc,
-        status: "running" as const,
-      }));
-      newStates[currentQuestion] = {
-        ...currentState,
-        testCases: runningTestCases,
+      const next = [...prev];
+      next[qIdx] = {
+        ...next[qIdx],
+        isRunning: true,
+        testCases: next[qIdx].testCases.map((tc) => ({
+          ...tc,
+          status: "running" as TCStatus,
+          actualOutput: "",
+          errorMessage: undefined,
+          statusLabel: undefined,
+        })),
       };
-      return newStates;
+      return next;
     });
 
-    // Simulate async test execution
-    setTimeout(() => {
-      setQuestionStates((prev) => {
-        const newStates = [...prev];
-        const currentState = newStates[currentQuestion];
-        const userCode = currentState.code;
-        const qId = questions[currentQuestion].id;
-
-        // Intelligent simulation: check if the user fixed the known bug
-        let isCorrect = false;
-
-        if (doorNumber === 1) { // Syntax Maze
-          if (qId === 1) isCorrect = userCode.includes('+') && !userCode.includes('a - b');
-          if (qId === 2) isCorrect = (userCode.includes('float(\'-inf\')') || userCode.includes('Number.MIN_SAFE_INTEGER') || userCode.includes('Integer.MIN_VALUE') || userCode.includes('arr[0]'));
-          if (qId === 3) isCorrect = userCode.includes('range(1, 6)') || userCode.includes('i <= 5') || userCode.includes('1, 5 + 1');
-          if (qId === 4) isCorrect = userCode.includes('::-1') || userCode.includes('i >= 0') || userCode.includes('i--');
-          if (qId === 5) isCorrect = userCode.includes('return 1') && userCode.includes('n == 0');
-        } else if (doorNumber === 2) { // Logic Trap
-          if (qId === 1) isCorrect = userCode.includes('== 0') || userCode.includes('=== 0');
-          if (qId === 2) isCorrect = userCode.includes('i += 1') || userCode.includes('i++') || (userCode.includes('range') && !userCode.includes(', 2)'));
-          if (qId === 3) isCorrect = !!userCode.match(/result\s*=\s*1/);
-          if (qId === 4) isCorrect = userCode.includes('len(s) - 1') || userCode.includes('s.length - 1');
-          if (qId === 5) isCorrect = !userCode.includes('break');
-        } else {
-          isCorrect = userCode.length > 50;
-        }
-
-        const testedCases = currentState.testCases.map((tc) => {
-          const passed = isCorrect;
+    const results = await Promise.all(
+      state.testCases.map(async (tc) => {
+        try {
+          const result = await runCode(language, state.code, tc.input);
+          const passed =
+            !result.isError &&
+            result.output.trim().toLowerCase() === tc.expectedOutput.trim().toLowerCase();
           return {
-            ...tc,
-            status: passed ? ("passed" as const) : ("failed" as const),
-            actualOutput: passed
-              ? tc.expectedOutput
-              : `Debug Error: Logic mismatch for input [${tc.input}]`,
+            actualOutput: result.output,
+            status: (result.isError ? "error" : passed ? "passed" : "failed") as TCStatus,
+            errorMessage: result.isError ? result.output : undefined,
+            statusLabel: result.statusLabel,
           };
-        });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "Network error";
+          toast.error(msg);
+          return {
+            actualOutput: "",
+            status: "error" as TCStatus,
+            errorMessage: msg,
+            statusLabel: "Network Error",
+          };
+        }
+      })
+    );
 
-        const passedCount = testedCases.filter(
-          (tc) => tc.status === "passed"
-        ).length;
-        const score = Math.round(
-          (passedCount / testedCases.length) * 100
-        );
-
-        newStates[currentQuestion] = {
-          ...currentState,
-          testCases: testedCases,
-          score,
-        };
-        return newStates;
-      });
-    }, 1500);
+    setQuestionStates((prev) => {
+      const next = [...prev];
+      const tcs = next[qIdx].testCases.map((tc, i) => ({
+        ...tc,
+        actualOutput: results[i].actualOutput,
+        status: results[i].status,
+        errorMessage: results[i].errorMessage,
+        statusLabel: results[i].statusLabel,
+      }));
+      const passedCount = tcs.filter((tc) => tc.status === "passed").length;
+      const score = Math.round((passedCount / tcs.length) * 100);
+      next[qIdx] = { ...next[qIdx], testCases: tcs, score, isRunning: false };
+      return next;
+    });
   };
 
-  // Passing grade from game state or fallback
   const passingGrade = gameState?.passingGrades?.[2] ?? 50;
+  const HINT_PENALTY = 10;
+  const alreadyCompleted = dbProgress !== null && dbProgress >= 2;
 
-  // Save progress immediately — called on submit AND time-up so back-button never loses data
-  const saveProgress = useCallback(async (score: number) => {
-    if (!userSession?.email) return;
-    try {
-      // ONLY increment roundsCompleted if they passed!
-      const passed = score >= passingGrade;
-      const nextProgress = passed ? Math.max(dbProgress, 2) : dbProgress;
-      await updateUserScore(userSession.email, 2, score, nextProgress);
-    } catch {
-      toast.error("Failed to save progress.");
-    }
-  }, [userSession, dbProgress, passingGrade]);
+  const computeFinalScore = useCallback(() => {
+    return Math.max(
+      0,
+      Math.round(
+        questionStates.reduce((sum, q) => sum + q.score, 0) /
+        Math.max(questions.length, 1)
+      ) - hintsUsed.size * HINT_PENALTY
+    );
+  }, [questionStates, questions.length, hintsUsed]);
+
+  const saveProgress = useCallback(
+    async (score: number) => {
+      if (!userSession?.email) return;
+      try {
+        const passed = score >= passingGrade;
+        const nextProgress = passed ? Math.max(dbProgress ?? 0, 2) : (dbProgress ?? 0);
+        await updateUserScore(userSession.email, 2, score, nextProgress);
+      } catch {
+        toast.error("Failed to save progress.");
+      }
+    },
+    [userSession, dbProgress, passingGrade]
+  );
 
   const handleTimeUp = useCallback(() => {
     setShowTimeUpDialog(true);
     setIsSubmitted(true);
     toast.error("Time's up! Your debug challenge has been auto-submitted.");
-    // Compute score from current state — save immediately
-    const HINT_PENALTY = 10;
-    const score = Math.max(0,
-      Math.round(questionStates.reduce((sum, q) => sum + q.score, 0) / Math.max(questions.length, 1))
-      - hintsUsed.size * HINT_PENALTY
-    );
-    saveProgress(score);
-  }, [questionStates, questions, hintsUsed, saveProgress]);
+    saveProgress(computeFinalScore());
+  }, [computeFinalScore, saveProgress]);
 
   const handleSubmit = () => {
     setIsSubmitted(true);
     setShowSubmitDialog(false);
-    toast.success("Debug challenge submitted! Check your results below.");
-    // Save immediately so back-button doesn't lose progress
-    const HINT_PENALTY = 10;
-    const score = Math.max(0,
-      Math.round(questionStates.reduce((sum, q) => sum + q.score, 0) / Math.max(questions.length, 1))
-      - hintsUsed.size * HINT_PENALTY
-    );
-    saveProgress(score);
+    toast.success("Debug challenge submitted!");
+    saveProgress(computeFinalScore());
   };
-
-  // Proceed button — progress already saved, just navigate
-  const handleContinueToRound3 = () => navigate("/");
 
   const handleNext = () => {
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
-      setSelectedTestCase(1);
+      setSelectedTestCase(0);
       setShowHint(false);
     }
   };
@@ -253,35 +264,44 @@ export default function DebugPage() {
   const handlePrevious = () => {
     if (currentQuestion > 0) {
       setCurrentQuestion(currentQuestion - 1);
-      setSelectedTestCase(1);
+      setSelectedTestCase(0);
       setShowHint(false);
     }
   };
 
-  // Apply hint penalty: -10% per unique hint revealed
-  const HINT_PENALTY = 10;
-  const totalScore = Math.max(
-    0,
-    Math.round(
-      questionStates.reduce((sum, q) => sum + q.score, 0) / questions.length
-    ) - hintsUsed.size * HINT_PENALTY
-  );
+  const totalScore = computeFinalScore();
   const passed = totalScore >= passingGrade;
-
   const question = questions[currentQuestion];
   const currentState = questionStates[currentQuestion];
 
-  // Loading guard
-  if (!questionsLoaded) return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-8 h-8 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
-        <p className="text-white/30 text-sm">Loading challenges…</p>
+  // ── Loading ────────────────────────────────────────────────────────
+  if (!questionsLoaded || dbProgress === null)
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
+          <p className="text-white/30 text-sm">Loading challenges…</p>
+        </div>
       </div>
-    </div>
-  );
+    );
 
-  // Language selection screen
+  // ── Already completed ──────────────────────────────────────────────
+  if (alreadyCompleted && !isSubmitted) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-card border border-border rounded-2xl p-10 text-center">
+          <Lock className="w-14 h-14 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-foreground mb-2">Already Completed</h2>
+          <p className="text-muted-foreground mb-6">
+            You've already submitted Round 2. Your score has been saved.
+          </p>
+          <Button onClick={() => navigate("/")}>Back to Home</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Language selection ─────────────────────────────────────────────
   if (!hasStarted) {
     return (
       <div className="min-h-screen bg-background">
@@ -313,7 +333,7 @@ export default function DebugPage() {
                   : "Runtime Rush"}
             </p>
             <p className="text-muted-foreground">
-              Find and fix the bugs in 5 coding challenges.
+              Fix the bugs in 5 coding challenges.
               <br />
               You have 15 minutes. Score at least {passingGrade}% to advance.
             </p>
@@ -324,7 +344,6 @@ export default function DebugPage() {
               Select Your Programming Language
             </h2>
             <LanguageSelector selected={language} onSelect={setLanguage} />
-
             <Button
               onClick={handleStartChallenge}
               disabled={!language}
@@ -339,9 +358,12 @@ export default function DebugPage() {
     );
   }
 
+  // ── Main challenge UI ──────────────────────────────────────────────
+  const selectedTc = currentState?.testCases[selectedTestCase];
+  const anyRunning = currentState?.isRunning;
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Animated background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 -left-32 w-96 h-96 bg-chart-4/10 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse delay-1000" />
@@ -369,18 +391,22 @@ export default function DebugPage() {
             </div>
           </div>
           {!isSubmitted && (
-            <Timer initialMinutes={DEBUG_TIME_MINUTES} onTimeUp={handleTimeUp} />
+            <Timer
+              initialMinutes={DEBUG_TIME_MINUTES}
+              onTimeUp={handleTimeUp}
+              storageKey={`debug_d${doorNumber}`}
+            />
           )}
         </header>
 
-        {/* Progress */}
+        {/* Progress bar */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-muted-foreground">
               Problem {currentQuestion + 1} of {questions.length}
             </span>
             <span className="text-sm text-muted-foreground">
-              Current Score: {currentState.score}%
+              This problem: {currentState.score}%
             </span>
           </div>
           <Progress
@@ -389,14 +415,15 @@ export default function DebugPage() {
           />
         </div>
 
-        {/* Question navigation */}
+        {/* Problem navigation dots */}
         <div className="flex gap-2 mb-6">
           {questions.map((_, index) => (
             <button
               key={index}
+              aria-label={`Go to problem ${index + 1}`}
               onClick={() => {
                 setCurrentQuestion(index);
-                setSelectedTestCase(1);
+                setSelectedTestCase(0);
                 setShowHint(false);
               }}
               className={cn(
@@ -411,22 +438,24 @@ export default function DebugPage() {
                     : "bg-secondary text-muted-foreground border border-border"
               )}
             >
-              {index + 1}
+              {questionStates[index].isRunning ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                index + 1
+              )}
             </button>
           ))}
         </div>
 
-        {/* Main content */}
+        {/* Main 2-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left: Problem description and code editor */}
+          {/* Left: Problem description + code editor */}
           <div className="space-y-4">
             <div className="bg-card border border-border rounded-xl p-6">
               <h2 className="text-xl font-bold text-foreground mb-2">
                 {question.title}
               </h2>
-              <p className="text-muted-foreground mb-4">
-                {question.description}
-              </p>
+              <p className="text-muted-foreground mb-4">{question.description}</p>
 
               <Button
                 variant="outline"
@@ -435,7 +464,7 @@ export default function DebugPage() {
                   const isRevealing = !showHint;
                   setShowHint(isRevealing);
                   if (isRevealing) {
-                    setHintsUsed(prev => new Set(prev).add(currentQuestion));
+                    setHintsUsed((prev) => new Set(prev).add(currentQuestion));
                   }
                 }}
                 className="gap-2"
@@ -443,7 +472,9 @@ export default function DebugPage() {
                 <Lightbulb className="w-4 h-4" />
                 {showHint ? "Hide Hint" : "Show Hint"}
                 {!hintsUsed.has(currentQuestion) && (
-                  <span className="text-xs text-muted-foreground/70 ml-1">(-{10}%)</span>
+                  <span className="text-xs text-muted-foreground/70 ml-1">
+                    (-{HINT_PENALTY}%)
+                  </span>
                 )}
               </Button>
 
@@ -454,69 +485,170 @@ export default function DebugPage() {
               )}
             </div>
 
+            {/* Code editor */}
             <CodeEditor
               value={currentState.code}
               onChange={handleCodeChange}
               language={language || "python"}
               readOnly={isSubmitted}
-              height="350px"
+              height="360px"
             />
 
-            <div className="flex gap-3">
-              <Button
-                onClick={handleRunTests}
-                disabled={isSubmitted}
-                className="flex-1 gap-2 bg-chart-1 hover:bg-chart-1/90 text-primary-foreground"
-              >
-                <Play className="w-4 h-4" />
-                Run Tests
-              </Button>
-            </div>
+            {/* Run button */}
+            <Button
+              onClick={handleRunTests}
+              disabled={isSubmitted || anyRunning}
+              className="w-full gap-2 bg-chart-1 hover:bg-chart-1/90 text-primary-foreground"
+            >
+              {anyRunning ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Running on Judge0…
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4" />
+                  Run Tests
+                </>
+              )}
+            </Button>
           </div>
 
-          {/* Right: Test cases */}
+          {/* Right: Test case panel */}
           <div className="space-y-4">
-            <TestCasePanel
-              testCases={currentState.testCases}
-              selectedTestCase={selectedTestCase}
-              onSelectTestCase={setSelectedTestCase}
-            />
-
-            {/* Score display */}
-            {currentState.testCases.some((tc) => tc.status !== "pending") && (
-              <div
-                className={cn(
-                  "p-4 rounded-xl border text-center",
-                  currentState.score >= 100
-                    ? "bg-chart-1/10 border-chart-1/30"
-                    : currentState.score > 0
-                      ? "bg-chart-3/10 border-chart-3/30"
-                      : "bg-secondary border-border"
-                )}
-              >
-                <p className="text-lg font-bold">
-                  Score:{" "}
-                  <span
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              {/* Tabs */}
+              <div className="flex border-b border-border overflow-x-auto">
+                {currentState.testCases.map((tc, idx) => (
+                  <button
+                    key={idx}
+                    aria-label={`Test case ${idx + 1}`}
+                    onClick={() => setSelectedTestCase(idx)}
                     className={cn(
-                      currentState.score >= 100
-                        ? "text-chart-1"
-                        : currentState.score > 0
-                          ? "text-chart-3"
-                          : "text-muted-foreground"
+                      "px-4 py-3 flex items-center gap-2 text-sm font-medium transition-colors",
+                      "border-r border-border last:border-r-0 whitespace-nowrap",
+                      selectedTestCase === idx
+                        ? "bg-secondary text-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                     )}
                   >
-                    {currentState.score}%
-                  </span>
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {
-                    currentState.testCases.filter((tc) => tc.status === "passed")
-                      .length
-                  }{" "}
-                  of {currentState.testCases.length} tests passed
-                </p>
+                    {tc.status === "pending" && (
+                      <span className="w-2 h-2 rounded-full bg-muted-foreground/40" />
+                    )}
+                    {tc.status === "running" && (
+                      <Loader2 className="w-4 h-4 text-chart-3 animate-spin" />
+                    )}
+                    {tc.status === "passed" && (
+                      <CheckCircle2 className="w-4 h-4 text-chart-1" />
+                    )}
+                    {(tc.status === "failed" || tc.status === "error") && (
+                      <AlertCircle className="w-4 h-4 text-destructive" />
+                    )}
+                    Test {idx + 1}
+                  </button>
+                ))}
               </div>
-            )}
+
+              {/* Details */}
+              {selectedTc && (
+                <div className="p-4 space-y-4">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                      Input (stdin)
+                    </p>
+                    <pre className="p-3 bg-secondary rounded-lg text-sm font-mono text-foreground overflow-x-auto">
+                      {selectedTc.input || "(no input)"}
+                    </pre>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                      Expected Output
+                    </p>
+                    <pre className="p-3 bg-secondary rounded-lg text-sm font-mono text-foreground overflow-x-auto">
+                      {selectedTc.expectedOutput}
+                    </pre>
+                  </div>
+
+                  {selectedTc.status !== "pending" && selectedTc.status !== "running" && (
+                    <div>
+                      <p
+                        className={cn(
+                          "text-xs font-semibold uppercase tracking-wider mb-1 flex items-center gap-2",
+                          selectedTc.status === "passed"
+                            ? "text-chart-1"
+                            : "text-destructive"
+                        )}
+                      >
+                        Your Output{" "}
+                        {selectedTc.status === "passed" ? "✓" : "✗"}
+                        {selectedTc.statusLabel && selectedTc.status !== "passed" && (
+                          <span className="font-normal normal-case text-[10px] px-1.5 py-0.5 bg-destructive/15 rounded">
+                            {selectedTc.statusLabel}
+                          </span>
+                        )}
+                      </p>
+                      <pre
+                        className={cn(
+                          "p-3 rounded-lg text-sm font-mono overflow-x-auto whitespace-pre-wrap",
+                          selectedTc.status === "passed"
+                            ? "bg-chart-1/10 text-chart-1 border border-chart-1/30"
+                            : "bg-destructive/10 text-destructive border border-destructive/30"
+                        )}
+                      >
+                        {selectedTc.errorMessage ||
+                          selectedTc.actualOutput ||
+                          "(no output)"}
+                      </pre>
+                    </div>
+                  )}
+
+                  {selectedTc.status === "running" && (
+                    <div className="flex items-center gap-3 p-3 bg-chart-3/10 border border-chart-3/30 rounded-lg">
+                      <Clock className="w-4 h-4 text-chart-3 animate-pulse" />
+                      <span className="text-sm text-chart-3">
+                        Executing on Judge0 sandbox…
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Score for this problem */}
+            {currentState.testCases.some(
+              (tc) => tc.status !== "pending" && tc.status !== "running"
+            ) && (
+                <div
+                  className={cn(
+                    "p-4 rounded-xl border text-center",
+                    currentState.score >= 100
+                      ? "bg-chart-1/10 border-chart-1/30"
+                      : currentState.score > 0
+                        ? "bg-chart-3/10 border-chart-3/30"
+                        : "bg-secondary border-border"
+                  )}
+                >
+                  <p className="text-lg font-bold">
+                    Problem Score:{" "}
+                    <span
+                      className={cn(
+                        currentState.score >= 100
+                          ? "text-chart-1"
+                          : currentState.score > 0
+                            ? "text-chart-3"
+                            : "text-muted-foreground"
+                      )}
+                    >
+                      {currentState.score}%
+                    </span>
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {currentState.testCases.filter((tc) => tc.status === "passed").length} of{" "}
+                    {currentState.testCases.length} test cases passed
+                  </p>
+                </div>
+              )}
           </div>
         </div>
 
@@ -554,7 +686,7 @@ export default function DebugPage() {
           </Button>
         </div>
 
-        {/* Results */}
+        {/* Results card */}
         {isSubmitted && (
           <div
             className={cn(
@@ -586,6 +718,11 @@ export default function DebugPage() {
             </h3>
             <p className="text-muted-foreground mb-4">
               Average Score: {totalScore}%
+              {hintsUsed.size > 0 && (
+                <span className="text-xs text-muted-foreground/60 ml-2">
+                  (−{hintsUsed.size * HINT_PENALTY}% hint penalty applied)
+                </span>
+              )}
             </p>
             <p className="text-sm text-muted-foreground mb-6">
               {passed
@@ -599,7 +736,7 @@ export default function DebugPage() {
               {passed && (
                 <Button
                   className="bg-primary hover:bg-primary/90"
-                  onClick={handleContinueToRound3}
+                  onClick={() => navigate("/")}
                 >
                   Continue to Round 3
                 </Button>
@@ -609,7 +746,6 @@ export default function DebugPage() {
         )}
       </div>
 
-      {/* Submit dialog */}
       <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
         <DialogContent>
           <DialogHeader>
@@ -628,7 +764,6 @@ export default function DebugPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Time up dialog */}
       <Dialog open={showTimeUpDialog} onOpenChange={setShowTimeUpDialog}>
         <DialogContent>
           <DialogHeader>

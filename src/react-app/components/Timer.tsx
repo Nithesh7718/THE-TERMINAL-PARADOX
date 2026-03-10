@@ -6,10 +6,47 @@ interface TimerProps {
   initialMinutes: number;
   onTimeUp: () => void;
   isPaused?: boolean;
+  /** Unique key so each round/door gets its own persisted start time */
+  storageKey?: string;
 }
 
-export default function Timer({ initialMinutes, onTimeUp, isPaused = false }: TimerProps) {
-  const [timeLeft, setTimeLeft] = useState(initialMinutes * 60);
+export default function Timer({
+  initialMinutes,
+  onTimeUp,
+  isPaused = false,
+  storageKey = "timer_default",
+}: TimerProps) {
+  const totalSeconds = initialMinutes * 60;
+
+  // On first mount, calculate remaining seconds from persisted start time
+  const [timeLeft, setTimeLeft] = useState<number>(() => {
+    try {
+      const stored = sessionStorage.getItem(`timer_start_${storageKey}`);
+      if (stored) {
+        const elapsed = Math.floor((Date.now() - parseInt(stored, 10)) / 1000);
+        const remaining = totalSeconds - elapsed;
+        if (remaining <= 0) return 0;
+        return remaining;
+      }
+    } catch { /* ignore */ }
+    // First time — record the start
+    try {
+      sessionStorage.setItem(`timer_start_${storageKey}`, Date.now().toString());
+    } catch { /* ignore */ }
+    return totalSeconds;
+  });
+
+  const onTimeUpRef = useRef(onTimeUp);
+  onTimeUpRef.current = onTimeUp;
+
+  // Fire time-up immediately if we resumed into an already-expired timer
+  const firedRef = useRef(false);
+  useEffect(() => {
+    if (timeLeft <= 0 && !firedRef.current) {
+      firedRef.current = true;
+      onTimeUpRef.current();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (isPaused || timeLeft <= 0) return;
@@ -18,7 +55,10 @@ export default function Timer({ initialMinutes, onTimeUp, isPaused = false }: Ti
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          onTimeUp();
+          if (!firedRef.current) {
+            firedRef.current = true;
+            onTimeUpRef.current();
+          }
           return 0;
         }
         return prev - 1;
@@ -26,17 +66,15 @@ export default function Timer({ initialMinutes, onTimeUp, isPaused = false }: Ti
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isPaused, timeLeft, onTimeUp]);
+  }, [isPaused, timeLeft]);
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
-  const isLowTime = timeLeft <= 300; // 5 minutes
-  const isCritical = timeLeft <= 60; // 1 minute
-
-  const percentage = (timeLeft / (initialMinutes * 60)) * 100;
+  const isLowTime = timeLeft <= 300;   // 5 min
+  const isCritical = timeLeft <= 60;   // 1 min
+  const percentage = (timeLeft / totalSeconds) * 100;
 
   const progressBarRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     if (progressBarRef.current) {
       progressBarRef.current.style.width = `${percentage}%`;
@@ -59,10 +97,7 @@ export default function Timer({ initialMinutes, onTimeUp, isPaused = false }: Ti
         <AlertTriangle className="w-5 h-5 text-destructive animate-bounce" />
       ) : (
         <TimerIcon
-          className={cn(
-            "w-5 h-5",
-            isLowTime ? "text-chart-3" : "text-primary"
-          )}
+          className={cn("w-5 h-5", isLowTime ? "text-chart-3" : "text-primary")}
         />
       )}
 

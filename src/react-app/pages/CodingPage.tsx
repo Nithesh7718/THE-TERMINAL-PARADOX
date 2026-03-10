@@ -10,6 +10,7 @@ import {
     CheckCircle2,
     AlertCircle,
     BookOpen,
+    Loader2,
 } from "lucide-react";
 import { Button } from "@/react-app/components/ui/button";
 import { Progress } from "@/react-app/components/ui/progress";
@@ -35,6 +36,7 @@ import {
 } from "@/react-app/components/ui/dialog";
 
 import { subscribeToGameState, type GameState } from "@/react-app/lib/gameState";
+import { runCode } from "@/react-app/lib/judge0";
 
 const CODING_TIME_MINUTES = 30;
 
@@ -51,8 +53,9 @@ export default function CodingPage() {
     const [showSubmitDialog, setShowSubmitDialog] = useState(false);
     const [showTimeUpDialog, setShowTimeUpDialog] = useState(false);
     const userSession = getUserSession();
-    const [dbProgress, setDbProgress] = useState(0);
+    const [dbProgress, setDbProgress] = useState<number | null>(null);
     const [gameState, setGameState] = useState<GameState | null>(null);
+    const [isRunning, setIsRunning] = useState(false);
 
     // Sync game state for passing grades
     useEffect(() => {
@@ -63,10 +66,20 @@ export default function CodingPage() {
     useEffect(() => {
         if (userSession?.email) {
             return subscribeToUser(userSession.email, (u) => {
-                if (u) setDbProgress(u.roundsCompleted);
+                setDbProgress(u ? u.roundsCompleted : 0);
             });
+        } else {
+            setDbProgress(0);
         }
     }, [userSession]);
+
+    // ── Round gating: Round 3 needs activeRound >= 3 ────────────────
+    useEffect(() => {
+        if (gameState && (gameState.activeRound ?? 1) < 3) {
+            toast.error("Round 3 hasn't started yet. Complete earlier rounds first.");
+            navigate("/", { replace: true });
+        }
+    }, [gameState, navigate]);
 
     const [questions, setQuestions] = useState<CodingQuestion[]>([]);
     const [questionsLoaded, setQuestionsLoaded] = useState(false);
@@ -121,66 +134,60 @@ export default function CodingPage() {
         });
     };
 
-    const handleRunTests = () => {
+    const handleRunTests = async () => {
+        if (!language) return;
+        setIsRunning(true);
         setQuestionStates((prev) => {
-            const newStates = [...prev];
-            newStates[currentQuestion] = {
-                ...newStates[currentQuestion],
-                testCases: newStates[currentQuestion].testCases.map((tc) => ({
+            const ns = [...prev];
+            ns[currentQuestion] = {
+                ...ns[currentQuestion],
+                testCases: ns[currentQuestion].testCases.map((tc) => ({
                     ...tc,
                     status: "running" as const,
                 })),
             };
-            return newStates;
+            return ns;
         });
 
-        setTimeout(() => {
-            setQuestionStates((prev) => {
-                const newStates = [...prev];
-                const currentState = newStates[currentQuestion];
-                const userCode = currentState.code.toLowerCase();
-                const qId = questions[currentQuestion].id;
-
-                // Intelligent simulation: check for key algorithmic logic
-                let isCorrect = false;
-
-                if (doorNumber === 1) { // Array Forge
-                    if (qId === 1) isCorrect = userCode.includes('target') && (userCode.includes('dict') || userCode.includes('map') || userCode.includes('for'));
-                    if (qId === 2) isCorrect = (userCode.includes('max') || userCode.includes('kadane')) && userCode.includes('curr');
-                    if (qId === 3) isCorrect = userCode.includes('sort') && userCode.includes('append') || userCode.includes('push');
-                } else if (doorNumber === 2) { // String Sanctum
-                    if (qId === 1) isCorrect = userCode.includes('alnum') || userCode.includes('regexp') || userCode.includes('replace');
-                    if (qId === 2) isCorrect = userCode.includes('substring') || userCode.includes('slice') || userCode.includes('starts');
-                    if (qId === 3) isCorrect = userCode.includes('sort') && (userCode.includes('map') || userCode.includes('dict') || userCode.includes('obj'));
-                } else if (doorNumber === 3) { // Graph Gateway
-                    if (qId === 1) isCorrect = (userCode.includes('dfs') || userCode.includes('bfs')) && userCode.includes('grid');
-                    if (qId === 2) isCorrect = userCode.includes('deque') || userCode.includes('queue') || userCode.includes('shift');
-                    if (qId === 3) isCorrect = (userCode.includes('visited') || userCode.includes('map')) && userCode.includes('neighbor');
-                } else {
-                    isCorrect = userCode.length > 100;
-                }
-
-                const testedCases = currentState.testCases.map((tc) => {
-                    const passed = isCorrect;
+        const state = questionStates[currentQuestion];
+        const results = await Promise.all(
+            state.testCases.map(async (tc) => {
+                try {
+                    const result = await runCode(language, state.code, tc.input);
+                    const passed =
+                        !result.isError &&
+                        result.output.trim().toLowerCase() ===
+                        tc.expectedOutput.trim().toLowerCase();
                     return {
-                        ...tc,
-                        status: passed ? ("passed" as const) : ("failed" as const),
-                        actualOutput: passed ? tc.expectedOutput : `Runtime Error: Logic mismatch for input [${tc.input}]`,
+                        status: (result.isError ? "failed" : passed ? "passed" : "failed") as "passed" | "failed",
+                        actualOutput: result.isError
+                            ? `${result.statusLabel}:\n${result.output}`
+                            : result.output,
                     };
-                });
+                } catch (err) {
+                    const msg = err instanceof Error ? err.message : "Network error";
+                    toast.error(msg);
+                    return { status: "failed" as const, actualOutput: msg };
+                }
+            })
+        );
 
-                const passedCount = testedCases.filter(
-                    (tc) => tc.status === "passed"
-                ).length;
-
-                newStates[currentQuestion] = {
-                    ...currentState,
-                    testCases: testedCases,
-                    score: Math.round((passedCount / testedCases.length) * 100),
-                };
-                return newStates;
-            });
-        }, 1800);
+        setQuestionStates((prev) => {
+            const newStates = [...prev];
+            const testedCases = newStates[currentQuestion].testCases.map((tc, i) => ({
+                ...tc,
+                status: results[i].status,
+                actualOutput: results[i].actualOutput,
+            }));
+            const passedCount = testedCases.filter((tc) => tc.status === "passed").length;
+            newStates[currentQuestion] = {
+                ...newStates[currentQuestion],
+                testCases: testedCases,
+                score: Math.round((passedCount / testedCases.length) * 100),
+            };
+            return newStates;
+        });
+        setIsRunning(false);
     };
 
     // Passing grade from game state or fallback
@@ -192,7 +199,7 @@ export default function CodingPage() {
         try {
             // ONLY increment roundsCompleted if they passed!
             const passed = score >= passingGrade;
-            const nextProgress = passed ? Math.max(dbProgress, 3) : dbProgress;
+            const nextProgress = passed ? Math.max(dbProgress ?? 0, 3) : (dbProgress ?? 0);
             await updateUserScore(userSession.email, 3, score, nextProgress);
         } catch {
             toast.error("Failed to save progress.");
@@ -233,7 +240,7 @@ export default function CodingPage() {
     const doorNames = ["Array Forge", "String Sanctum", "Graph Gateway"];
 
     // Loading guard
-    if (!questionsLoaded) return (
+    if (!questionsLoaded || dbProgress === null) return (
         <div className="min-h-screen bg-background flex items-center justify-center">
             <div className="flex flex-col items-center gap-3">
                 <div className="w-8 h-8 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin" />
@@ -241,6 +248,23 @@ export default function CodingPage() {
             </div>
         </div>
     );
+
+    // Re-attempt guard
+    const alreadyCompleted = dbProgress >= 3;
+    if (alreadyCompleted && !isSubmitted) {
+        return (
+            <div className="min-h-screen bg-background flex items-center justify-center px-4">
+                <div className="max-w-md w-full bg-card border border-border rounded-2xl p-10 text-center">
+                    <CheckCircle2 className="w-14 h-14 text-chart-1 mx-auto mb-4" />
+                    <h2 className="text-2xl font-bold text-foreground mb-2">Already Completed</h2>
+                    <p className="text-muted-foreground mb-6">
+                        You've already submitted Round 3. Your score has been saved.
+                    </p>
+                    <Button onClick={() => navigate("/")}>Back to Home</Button>
+                </div>
+            </div>
+        );
+    }
 
     // Language selection screen
     if (!hasStarted) {
@@ -355,6 +379,7 @@ export default function CodingPage() {
                         <Timer
                             initialMinutes={CODING_TIME_MINUTES}
                             onTimeUp={handleTimeUp}
+                            storageKey={`coding_d${doorNumber}`}
                         />
                     )}
                 </header>
@@ -493,11 +518,14 @@ export default function CodingPage() {
                         <div className="flex gap-3">
                             <Button
                                 onClick={handleRunTests}
-                                disabled={isSubmitted}
+                                disabled={isSubmitted || isRunning}
                                 className="flex-1 gap-2 bg-chart-1 hover:bg-chart-1/90 text-primary-foreground"
                             >
-                                <Play className="w-4 h-4" />
-                                Run Tests
+                                {isRunning ? (
+                                    <><Loader2 className="w-4 h-4 animate-spin" />Running on Judge0…</>
+                                ) : (
+                                    <><Play className="w-4 h-4" />Run Tests</>
+                                )}
                             </Button>
                         </div>
                     </div>
