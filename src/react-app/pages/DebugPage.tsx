@@ -177,7 +177,7 @@ export default function DebugPage() {
 
   const handleResetCode = () => {
     if (!language) return;
-    const originalCode = question.buggyCode[language] || "";
+    const originalCode = question?.buggyCode?.[language] || "";
     setQuestionStates((prev) => {
       const next = [...prev];
       next[currentQuestion] = { ...next[currentQuestion], code: originalCode };
@@ -191,6 +191,10 @@ export default function DebugPage() {
     if (!language) return;
     const qIdx = currentQuestion;
     const state = questionStates[qIdx];
+    if (!question || !state) {
+      toast.error("Question data is not ready yet. Please wait.");
+      return;
+    }
 
     // Mark all as running
     setQuestionStates((prev) => {
@@ -515,9 +519,9 @@ export default function DebugPage() {
           <div className="space-y-4">
             <div className="bg-card border border-border rounded-xl p-6">
               <h2 className="text-xl font-bold text-foreground mb-2">
-                {question.title}
+                {question?.title}
               </h2>
-              <p className="text-muted-foreground mb-4">{question.description}</p>
+              <p className="text-muted-foreground mb-4">{question?.description}</p>
 
               <Button
                 variant="outline"
@@ -551,14 +555,14 @@ export default function DebugPage() {
 
               {showHint && (
                 <div className="mt-4 p-4 bg-chart-3/10 border border-chart-3/30 rounded-lg">
-                  <p className="text-sm text-chart-3">{question.hint}</p>
+                  <p className="text-sm text-chart-3">{question?.hint}</p>
                 </div>
               )}
             </div>
 
             <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5 space-y-3">
               <div className="flex flex-wrap gap-x-6 gap-y-2">
-                {question.inputVarNames.map((name, i) => {
+                {(question.inputVarNames ?? []).map((name, i) => {
                   const tokens = (currentState?.testCases[selectedTestCase]?.input ?? "").trim().split(/\s+/);
                   return (
                     <div key={i} className="flex items-center gap-2">
