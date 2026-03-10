@@ -202,7 +202,7 @@ export default function DebugPage() {
       next[qIdx] = {
         ...next[qIdx],
         isRunning: true,
-        testCases: next[qIdx].testCases.map((tc) => ({
+        testCases: (next[qIdx].testCases ?? []).map((tc) => ({
           ...tc,
           status: "running" as TCStatus,
           actualOutput: "",
@@ -214,7 +214,7 @@ export default function DebugPage() {
     });
 
     const results = await Promise.all(
-      state.testCases.map(async (tc) => {
+      (state.testCases ?? []).map(async (tc) => {
         try {
           const codeToRun = buildCode(question, language, state.code, tc.input);
           console.log(`[Test Case ${state.testCases.indexOf(tc)}] Code to run:`, codeToRun);
@@ -243,15 +243,16 @@ export default function DebugPage() {
 
     setQuestionStates((prev) => {
       const next = [...prev];
-      const tcs = next[qIdx].testCases.map((tc, i) => ({
+      const tcs = (next[qIdx].testCases ?? []).map((tc, i) => ({
         ...tc,
-        actualOutput: results[i].actualOutput,
-        status: results[i].status,
-        errorMessage: results[i].errorMessage,
-        statusLabel: results[i].statusLabel,
+        actualOutput: results[i]?.actualOutput ?? "",
+        status: results[i]?.status ?? "error",
+        errorMessage: results[i]?.errorMessage,
+        statusLabel: results[i]?.statusLabel,
       }));
+      const totalTcs = tcs.length || 1;
       const passedCount = tcs.filter((tc) => tc.status === "passed").length;
-      const score = Math.round((passedCount / tcs.length) * 100);
+      const score = Math.round((passedCount / totalTcs) * 100);
       next[qIdx] = { ...next[qIdx], testCases: tcs, score, isRunning: false };
       return next;
     });
@@ -615,7 +616,7 @@ export default function DebugPage() {
             <div className="bg-card border border-border rounded-xl overflow-hidden">
               {/* Tabs */}
               <div className="flex border-b border-border overflow-x-auto">
-                {currentState?.testCases.map((tc, idx) => (
+                {(currentState?.testCases ?? []).map((tc, idx) => (
                   <button
                     key={idx}
                     aria-label={`Test case ${idx + 1}`}

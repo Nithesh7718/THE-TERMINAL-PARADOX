@@ -25,10 +25,24 @@ export async function getQuizQuestions(door: number): Promise<QuizQuestion[]> {
 export async function getDebugQuestions(door: number): Promise<DebugQuestion[]> {
     try {
         const snap = await getDoc(qKey("debug", door));
-        if (snap.exists()) return snap.data().questions as DebugQuestion[];
+        if (snap.exists()) {
+            const raw = snap.data().questions as DebugQuestion[];
+            return raw.map(normalizeDebugQuestion);
+        }
     } catch { /* fall through to static */ }
     const { getDebugQuestionsForDoor } = await import("@/react-app/data/debugQuestions");
     return getDebugQuestionsForDoor(door);
+}
+
+/** Ensure all required array/object fields are present, even if missing from Firestore */
+function normalizeDebugQuestion(q: DebugQuestion): DebugQuestion {
+    return {
+        ...q,
+        testCases: Array.isArray(q.testCases) ? q.testCases : [],
+        inputVarNames: Array.isArray(q.inputVarNames) ? q.inputVarNames : [],
+        buggyCode: (q.buggyCode && typeof q.buggyCode === "object") ? q.buggyCode : {} as DebugQuestion["buggyCode"],
+        inputPreamble: (q.inputPreamble && typeof q.inputPreamble === "object") ? q.inputPreamble : {} as DebugQuestion["inputPreamble"],
+    };
 }
 
 export async function getCodingQuestions(door: number): Promise<CodingQuestion[]> {
