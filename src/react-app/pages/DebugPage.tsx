@@ -61,6 +61,8 @@ function buildCode(
   if (userCode.includes("/*INPUT*/")) {
     return userCode.replace("/*INPUT*/", preamble);
   }
+  // For Java/C/C++, prepending might break syntax if outside class/main.
+  // But for legacy compatibility, we keep it.
   return preamble + "\n\n" + userCode;
 }
 
@@ -173,6 +175,17 @@ export default function DebugPage() {
     });
   };
 
+  const handleResetCode = () => {
+    if (!language) return;
+    const originalCode = question.buggyCode[language] || "";
+    setQuestionStates((prev) => {
+      const next = [...prev];
+      next[currentQuestion] = { ...next[currentQuestion], code: originalCode };
+      return next;
+    });
+    toast.info("Code reset to original buggy version.");
+  };
+
   // ── Real Judge0 execution ──────────────────────────────────────────
   const handleRunTests = async () => {
     if (!language) return;
@@ -200,7 +213,8 @@ export default function DebugPage() {
       state.testCases.map(async (tc) => {
         try {
           const codeToRun = buildCode(question, language, state.code, tc.input);
-          const result = await runCode(language, codeToRun, "");
+          console.log(`[Test Case ${state.testCases.indexOf(tc)}] Code to run:`, codeToRun);
+          const result = await runCode(language, codeToRun, tc.input);
           const passed =
             !result.isError &&
             result.output.trim().toLowerCase() === tc.expectedOutput.trim().toLowerCase();
@@ -526,6 +540,15 @@ export default function DebugPage() {
                 )}
               </Button>
 
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResetCode}
+                className="gap-2 text-muted-foreground hover:text-destructive ml-2"
+              >
+                Reset Code
+              </Button>
+
               {showHint && (
                 <div className="mt-4 p-4 bg-chart-3/10 border border-chart-3/30 rounded-lg">
                   <p className="text-sm text-chart-3">{question.hint}</p>
@@ -533,15 +556,25 @@ export default function DebugPage() {
               )}
             </div>
 
-            {/* Variable values info strip */}
-            <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5 flex items-start gap-3">
-              <span className="text-xs font-semibold text-primary mt-0.5 shrink-0">Variables</span>
-              <code className="text-xs text-foreground/80 font-mono break-all">
-                {fillPreamble(
-                  (question.inputPreamble as Record<string, string>)?.[language ?? "python"] ?? "",
-                  currentState?.testCases[selectedTestCase]?.input ?? ""
-                )}
-              </code>
+            <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5 space-y-3">
+              <div className="flex flex-wrap gap-x-6 gap-y-2">
+                {question.inputVarNames.map((name, i) => {
+                  const tokens = (currentState?.testCases[selectedTestCase]?.input ?? "").trim().split(/\s+/);
+                  return (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-primary/70 uppercase tracking-tight">{name}</span>
+                      <code className="text-xs text-foreground font-mono bg-background/50 px-1.5 py-0.5 rounded border border-primary/10">
+                        {tokens[i] || "?"}
+                      </code>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="pt-2 border-t border-primary/10">
+                <p className="text-[10px] text-muted-foreground/60 leading-relaxed">
+                  <span className="font-semibold text-primary/60">Execution:</span> These values are injected as variables or provided via <code>stdin</code>. You can use <code>Scanner</code> or <code>input()</code> if you prefer.
+                </p>
+              </div>
             </div>
 
             {/* Code editor */}
