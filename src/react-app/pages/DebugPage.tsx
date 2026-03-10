@@ -88,13 +88,13 @@ export default function DebugPage() {
     }
   }, [userSession]);
 
-  // ── Round gating: Round 2 needs activeRound >= 2 ───────────────────
+  // ── Progress gating: only accessible after Round 1 is complete ──
   useEffect(() => {
-    if (gameState && (gameState.activeRound ?? 1) < 2) {
-      toast.error("Round 2 hasn't started yet. Complete Round 1 first.");
+    if (dbProgress !== null && dbProgress < 1) {
+      toast.error("Complete Round 1 first to unlock Round 2.");
       navigate("/", { replace: true });
     }
-  }, [gameState, navigate]);
+  }, [dbProgress, navigate]);
 
   const [questions, setQuestions] = useState<DebugQuestion[]>([]);
   const [questionsLoaded, setQuestionsLoaded] = useState(false);

@@ -71,10 +71,10 @@ export default function QuizPage() {
     }
   }, [userSession]);
 
-  // ── Round gating: redirect if admin hasn't opened Round 1 ──────────
+  // ── Game-started gate: redirect if admin hasn't started the game yet ──
   useEffect(() => {
-    if (gameState && (gameState.activeRound ?? 1) < 1) {
-      toast.error("Round 1 hasn't started yet.");
+    if (gameState && gameState.started === false) {
+      toast.error("The game hasn't started yet. Please wait for the admin.");
       navigate("/", { replace: true });
     }
   }, [gameState, navigate]);

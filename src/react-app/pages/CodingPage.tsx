@@ -73,13 +73,13 @@ export default function CodingPage() {
         }
     }, [userSession]);
 
-    // ── Round gating: Round 3 needs activeRound >= 3 ────────────────
+    // ── Progress gating: only accessible after Rounds 1 & 2 are complete ──
     useEffect(() => {
-        if (gameState && (gameState.activeRound ?? 1) < 3) {
-            toast.error("Round 3 hasn't started yet. Complete earlier rounds first.");
+        if (dbProgress !== null && dbProgress < 2) {
+            toast.error("Complete Rounds 1 & 2 first to unlock Round 3.");
             navigate("/", { replace: true });
         }
-    }, [gameState, navigate]);
+    }, [dbProgress, navigate]);
 
     const [questions, setQuestions] = useState<CodingQuestion[]>([]);
     const [questionsLoaded, setQuestionsLoaded] = useState(false);
