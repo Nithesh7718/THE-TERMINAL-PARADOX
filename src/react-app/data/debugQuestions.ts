@@ -1,11 +1,10 @@
-// Debug questions for Round 2 — Variable Injection Model
+// Debug questions for Round 2 — Native Input Model
 //
 // HOW IT WORKS:
-// • buggyCode uses named variables (no stdin) — users just fix the logic
-// • inputPreamble[lang] is filled per test case, with {0},{1}… replaced
-//   by the whitespace-split tokens from testCases[i].input
-// • Python/JS: preamble is prepended before the user's code
-// • Java/C/C++: preamble replaces the /*INPUT*/ marker inside the code
+// • buggyCode reads input natively (input(), Scanner, scanf, cin)
+// • inputPreamble is kept for the UI to display variable hints
+// • Judge0 receives tc.input as stdin
+// • Students fix only the logic bug — input reading is correct
 
 import type { Language } from "@/react-app/components/LanguageSelector";
 
@@ -15,12 +14,9 @@ export interface DebugQuestion {
     description: string;
     /** Short names shown in the UI above the editor, e.g. ["a","b"] */
     inputVarNames: string[];
-    /** Per-language preamble template with {0},{1},… positional tokens */
+    /** Per-language preamble template — for UI display only */
     inputPreamble: Record<Language, string>;
-    /**
-     * Python/JS: no stdin reading — use variables directly.
-     * Java/C/C++: include a /*INPUT*\/ comment where preamble is injected.
-     */
+    /** Buggy code that reads input natively via stdin */
     buggyCode: Record<Language, string>;
     testCases: { input: string; expectedOutput: string }[];
     hint: string;
@@ -46,20 +42,28 @@ export const door1DebugQuestions: DebugQuestion[] = [
     result = a - b  # Bug here
     return result
 
+a, b = map(int, input().split())
 print(add_numbers(a, b))`,
-            javascript: `function addNumbers(a, b) {
-    let result = a - b;  // Bug here
-    return result;
-}
-
-console.log(addNumbers(a, b));`,
-            java: `public class Main {
+            javascript: `const readline = require('readline');
+const rl = readline.createInterface({ input: process.stdin });
+rl.on('line', (line) => {
+    const [a, b] = line.trim().split(' ').map(Number);
+    function addNumbers(a, b) {
+        let result = a - b;  // Bug here
+        return result;
+    }
+    console.log(addNumbers(a, b));
+    rl.close();
+});`,
+            java: `import java.util.Scanner;
+public class Main {
     public static int addNumbers(int a, int b) {
         int result = a - b;  // Bug here
         return result;
     }
     public static void main(String[] args) {
-        /*INPUT*/
+        Scanner sc = new Scanner(System.in);
+        int a = sc.nextInt(), b = sc.nextInt();
         System.out.println(addNumbers(a, b));
     }
 }`,
@@ -69,8 +73,9 @@ int addNumbers(int a, int b) {
     return result;
 }
 int main() {
-    /*INPUT*/
-    printf("%d\n", addNumbers(a, b));
+    int a, b;
+    scanf("%d %d", &a, &b);
+    printf("%d\\n", addNumbers(a, b));
     return 0;
 }`,
             cpp: `#include <iostream>
@@ -80,7 +85,8 @@ int addNumbers(int a, int b) {
     return result;
 }
 int main() {
-    /*INPUT*/
+    int a, b;
+    cin >> a >> b;
     cout << addNumbers(a, b) << endl;
     return 0;
 }`,
@@ -111,49 +117,51 @@ int main() {
         return 0  # Bug: wrong base case
     return n * factorial(n - 1)
 
+n = int(input())
 print(factorial(n))`,
-            javascript: `function factorial(n) {
-    if (n === 0) {
-        return 0;  // Bug: wrong base case
+            javascript: `const readline = require('readline');
+const rl = readline.createInterface({ input: process.stdin });
+rl.on('line', (line) => {
+    const n = parseInt(line.trim());
+    function factorial(n) {
+        if (n === 0) return 0;  // Bug: wrong base case
+        return n * factorial(n - 1);
     }
-    return n * factorial(n - 1);
-}
-
-console.log(factorial(n));`,
-            java: `public class Main {
+    console.log(factorial(n));
+    rl.close();
+});`,
+            java: `import java.util.Scanner;
+public class Main {
     public static int factorial(int n) {
-        if (n == 0) {
-            return 0;  // Bug: wrong base case
-        }
+        if (n == 0) return 0;  // Bug: wrong base case
         return n * factorial(n - 1);
     }
     public static void main(String[] args) {
-        /*INPUT*/
+        Scanner sc = new Scanner(System.in);
+        int n = sc.nextInt();
         System.out.println(factorial(n));
     }
 }`,
             c: `#include <stdio.h>
 int factorial(int n) {
-    if (n == 0) {
-        return 0;  // Bug: wrong base case
-    }
+    if (n == 0) return 0;  // Bug: wrong base case
     return n * factorial(n - 1);
 }
 int main() {
-    /*INPUT*/
-    printf("%d\n", factorial(n));
+    int n;
+    scanf("%d", &n);
+    printf("%d\\n", factorial(n));
     return 0;
 }`,
             cpp: `#include <iostream>
 using namespace std;
 int factorial(int n) {
-    if (n == 0) {
-        return 0;  // Bug: wrong base case
-    }
+    if (n == 0) return 0;  // Bug: wrong base case
     return n * factorial(n - 1);
 }
 int main() {
-    /*INPUT*/
+    int n;
+    cin >> n;
     cout << factorial(n) << endl;
     return 0;
 }`,
@@ -179,21 +187,23 @@ int main() {
             cpp: "int n = {0};",
         },
         buggyCode: {
-            python: `def print_numbers(n):
-    for i in range(1, n):  # Bug: wrong range
-        print(i)
-
-print_numbers(n)`,
-            javascript: `function printNumbers(n) {
+            python: `n = int(input())
+for i in range(1, n):  # Bug: wrong range
+    print(i)`,
+            javascript: `const readline = require('readline');
+const rl = readline.createInterface({ input: process.stdin });
+rl.on('line', (line) => {
+    const n = parseInt(line.trim());
     for (let i = 1; i < n; i++) {  // Bug: wrong condition
         console.log(i);
     }
-}
-
-printNumbers(n);`,
-            java: `public class Main {
+    rl.close();
+});`,
+            java: `import java.util.Scanner;
+public class Main {
     public static void main(String[] args) {
-        /*INPUT*/
+        Scanner sc = new Scanner(System.in);
+        int n = sc.nextInt();
         for (int i = 1; i < n; i++) {  // Bug: wrong condition
             System.out.println(i);
         }
@@ -201,16 +211,18 @@ printNumbers(n);`,
 }`,
             c: `#include <stdio.h>
 int main() {
-    /*INPUT*/
+    int n;
+    scanf("%d", &n);
     for (int i = 1; i < n; i++) {  // Bug: wrong condition
-        printf("%d\n", i);
+        printf("%d\\n", i);
     }
     return 0;
 }`,
             cpp: `#include <iostream>
 using namespace std;
 int main() {
-    /*INPUT*/
+    int n;
+    cin >> n;
     for (int i = 1; i < n; i++) {  // Bug: wrong condition
         cout << i << endl;
     }
@@ -244,17 +256,24 @@ int main() {
         reversed_str += s[i]
     return reversed_str
 
+s = input()
 print(reverse_string(s))`,
-            javascript: `function reverseString(s) {
-    let reversed = "";
-    for (let i = 0; i < s.length; i++) {  // Bug: wrong direction
-        reversed += s[i];
+            javascript: `const readline = require('readline');
+const rl = readline.createInterface({ input: process.stdin });
+rl.on('line', (line) => {
+    const s = line.trim();
+    function reverseString(s) {
+        let reversed = "";
+        for (let i = 0; i < s.length; i++) {  // Bug: wrong direction
+            reversed += s[i];
+        }
+        return reversed;
     }
-    return reversed;
-}
-
-console.log(reverseString(s));`,
-            java: `public class Main {
+    console.log(reverseString(s));
+    rl.close();
+});`,
+            java: `import java.util.Scanner;
+public class Main {
     public static String reverseString(String s) {
         StringBuilder reversed = new StringBuilder();
         for (int i = 0; i < s.length(); i++) {  // Bug: wrong direction
@@ -263,28 +282,31 @@ console.log(reverseString(s));`,
         return reversed.toString();
     }
     public static void main(String[] args) {
-        /*INPUT*/
+        Scanner sc = new Scanner(System.in);
+        String s = sc.nextLine();
         System.out.println(reverseString(s));
     }
 }`,
             c: `#include <stdio.h>
 #include <string.h>
 int main() {
-    /*INPUT*/
+    char s[100];
+    scanf("%s", s);
     int len = strlen(s);
     char result[100];
     for (int i = 0; i < len; i++) {  // Bug: wrong direction
         result[i] = s[i];
     }
-    result[len] = '\0';
-    printf("%s\n", result);
+    result[len] = '\\0';
+    printf("%s\\n", result);
     return 0;
 }`,
             cpp: `#include <iostream>
 #include <string>
 using namespace std;
 int main() {
-    /*INPUT*/
+    string s;
+    cin >> s;
     string reversed = "";
     for (int i = 0; i < (int)s.length(); i++) {  // Bug: wrong direction
         reversed += s[i];
@@ -304,7 +326,7 @@ int main() {
         id: 5,
         title: "Fix the Array Maximum",
         description:
-            "find_max should return the maximum of `a`, `b`, and `c`. It gives wrong answers when all values are negative.",
+            "find_max should return the maximum of three numbers. It gives wrong answers when all values are negative.",
         inputVarNames: ["a", "b", "c"],
         inputPreamble: {
             python: "a, b, c = {0}, {1}, {2}",
@@ -324,17 +346,24 @@ int main() {
         max_val = c
     return max_val
 
+a, b, c = map(int, input().split())
 print(find_max(a, b, c))`,
-            javascript: `function findMax(a, b, c) {
-    let maxVal = 0;  // Bug: wrong initial value
-    if (a > maxVal) maxVal = a;
-    if (b > maxVal) maxVal = b;
-    if (c > maxVal) maxVal = c;
-    return maxVal;
-}
-
-console.log(findMax(a, b, c));`,
-            java: `public class Main {
+            javascript: `const readline = require('readline');
+const rl = readline.createInterface({ input: process.stdin });
+rl.on('line', (line) => {
+    const [a, b, c] = line.trim().split(' ').map(Number);
+    function findMax(a, b, c) {
+        let maxVal = 0;  // Bug: wrong initial value
+        if (a > maxVal) maxVal = a;
+        if (b > maxVal) maxVal = b;
+        if (c > maxVal) maxVal = c;
+        return maxVal;
+    }
+    console.log(findMax(a, b, c));
+    rl.close();
+});`,
+            java: `import java.util.Scanner;
+public class Main {
     public static int findMax(int a, int b, int c) {
         int maxVal = 0;  // Bug: wrong initial value
         if (a > maxVal) maxVal = a;
@@ -343,7 +372,8 @@ console.log(findMax(a, b, c));`,
         return maxVal;
     }
     public static void main(String[] args) {
-        /*INPUT*/
+        Scanner sc = new Scanner(System.in);
+        int a = sc.nextInt(), b = sc.nextInt(), c = sc.nextInt();
         System.out.println(findMax(a, b, c));
     }
 }`,
@@ -356,8 +386,9 @@ int findMax(int a, int b, int c) {
     return maxVal;
 }
 int main() {
-    /*INPUT*/
-    printf("%d\n", findMax(a, b, c));
+    int a, b, c;
+    scanf("%d %d %d", &a, &b, &c);
+    printf("%d\\n", findMax(a, b, c));
     return 0;
 }`,
             cpp: `#include <iostream>
@@ -370,7 +401,8 @@ int findMax(int a, int b, int c) {
     return maxVal;
 }
 int main() {
-    /*INPUT*/
+    int a, b, c;
+    cin >> a >> b >> c;
     cout << findMax(a, b, c) << endl;
     return 0;
 }`,
@@ -403,18 +435,26 @@ export const door2DebugQuestions: DebugQuestion[] = [
             python: `def is_even(n):
     return n % 2 == 1  # Bug: wrong comparison
 
+n = int(input())
 print(str(is_even(n)).lower())`,
-            javascript: `function isEven(n) {
-    return n % 2 === 1;  // Bug: wrong comparison
-}
-
-console.log(String(isEven(n)));`,
-            java: `public class Main {
+            javascript: `const readline = require('readline');
+const rl = readline.createInterface({ input: process.stdin });
+rl.on('line', (line) => {
+    const n = parseInt(line.trim());
+    function isEven(n) {
+        return n % 2 === 1;  // Bug: wrong comparison
+    }
+    console.log(String(isEven(n)));
+    rl.close();
+});`,
+            java: `import java.util.Scanner;
+public class Main {
     public static boolean isEven(int n) {
         return n % 2 == 1;  // Bug: wrong comparison
     }
     public static void main(String[] args) {
-        /*INPUT*/
+        Scanner sc = new Scanner(System.in);
+        int n = sc.nextInt();
         System.out.println(isEven(n));
     }
 }`,
@@ -423,8 +463,9 @@ int isEven(int n) {
     return n % 2 == 1;  // Bug: wrong comparison
 }
 int main() {
-    /*INPUT*/
-    printf("%s\n", isEven(n) ? "true" : "false");
+    int n;
+    scanf("%d", &n);
+    printf("%s\\n", isEven(n) ? "true" : "false");
     return 0;
 }`,
             cpp: `#include <iostream>
@@ -433,7 +474,8 @@ bool isEven(int n) {
     return n % 2 == 1;  // Bug: wrong comparison
 }
 int main() {
-    /*INPUT*/
+    int n;
+    cin >> n;
     cout << boolalpha << isEven(n) << endl;
     return 0;
 }`,
@@ -465,17 +507,24 @@ int main() {
         result *= base
     return result
 
+base, exp = map(int, input().split())
 print(power(base, exp))`,
-            javascript: `function power(base, exp) {
-    let result = 0;  // Bug: wrong initial value
-    for (let i = 0; i < exp; i++) {
-        result *= base;
+            javascript: `const readline = require('readline');
+const rl = readline.createInterface({ input: process.stdin });
+rl.on('line', (line) => {
+    const [base, exp] = line.trim().split(' ').map(Number);
+    function power(base, exp) {
+        let result = 0;  // Bug: wrong initial value
+        for (let i = 0; i < exp; i++) {
+            result *= base;
+        }
+        return result;
     }
-    return result;
-}
-
-console.log(power(base, exp));`,
-            java: `public class Main {
+    console.log(power(base, exp));
+    rl.close();
+});`,
+            java: `import java.util.Scanner;
+public class Main {
     public static int power(int base, int exp) {
         int result = 0;  // Bug: wrong initial value
         for (int i = 0; i < exp; i++) {
@@ -484,7 +533,8 @@ console.log(power(base, exp));`,
         return result;
     }
     public static void main(String[] args) {
-        /*INPUT*/
+        Scanner sc = new Scanner(System.in);
+        int base = sc.nextInt(), exp = sc.nextInt();
         System.out.println(power(base, exp));
     }
 }`,
@@ -497,8 +547,9 @@ int power(int base, int exp) {
     return result;
 }
 int main() {
-    /*INPUT*/
-    printf("%d\n", power(base, exp));
+    int base, exp;
+    scanf("%d %d", &base, &exp);
+    printf("%d\\n", power(base, exp));
     return 0;
 }`,
             cpp: `#include <iostream>
@@ -511,7 +562,8 @@ int power(int base, int exp) {
     return result;
 }
 int main() {
-    /*INPUT*/
+    int base, exp;
+    cin >> base >> exp;
     cout << power(base, exp) << endl;
     return 0;
 }`,
@@ -547,18 +599,25 @@ int main() {
         right -= 1
     return True
 
+s = input()
 print(str(is_palindrome(s)).lower())`,
-            javascript: `function isPalindrome(s) {
-    let left = 0, right = s.length;  // Bug: off by one
-    while (left < right) {
-        if (s[left] !== s[right]) return false;
-        left++; right--;
+            javascript: `const readline = require('readline');
+const rl = readline.createInterface({ input: process.stdin });
+rl.on('line', (line) => {
+    const s = line.trim();
+    function isPalindrome(s) {
+        let left = 0, right = s.length;  // Bug: off by one
+        while (left < right) {
+            if (s[left] !== s[right]) return false;
+            left++; right--;
+        }
+        return true;
     }
-    return true;
-}
-
-console.log(String(isPalindrome(s)));`,
-            java: `public class Main {
+    console.log(String(isPalindrome(s)));
+    rl.close();
+});`,
+            java: `import java.util.Scanner;
+public class Main {
     public static boolean isPalindrome(String s) {
         int left = 0, right = s.length();  // Bug: off by one
         while (left < right) {
@@ -568,7 +627,8 @@ console.log(String(isPalindrome(s)));`,
         return true;
     }
     public static void main(String[] args) {
-        /*INPUT*/
+        Scanner sc = new Scanner(System.in);
+        String s = sc.nextLine();
         System.out.println(isPalindrome(s));
     }
 }`,
@@ -583,8 +643,9 @@ int isPalindrome(char* s) {
     return 1;
 }
 int main() {
-    /*INPUT*/
-    printf("%s\n", isPalindrome(s) ? "true" : "false");
+    char s[100];
+    scanf("%s", s);
+    printf("%s\\n", isPalindrome(s) ? "true" : "false");
     return 0;
 }`,
             cpp: `#include <iostream>
@@ -599,7 +660,8 @@ bool isPalindrome(string s) {
     return true;
 }
 int main() {
-    /*INPUT*/
+    string s;
+    cin >> s;
     cout << boolalpha << isPalindrome(s) << endl;
     return 0;
 }`,
@@ -615,7 +677,7 @@ int main() {
         id: 4,
         title: "Fix the Array Sum (Step Bug)",
         description:
-            "arraySum should add every element but only adds every other one due to a wrong loop step.",
+            "arraySum should add every element of 5 numbers but only adds every other one due to a wrong loop step.",
         inputVarNames: ["a", "b", "c", "d", "e"],
         inputPreamble: {
             python: "arr = [{0}, {1}, {2}, {3}, {4}]",
@@ -631,17 +693,24 @@ int main() {
         total += arr[i]
     return total
 
+arr = list(map(int, input().split()))
 print(array_sum(arr))`,
-            javascript: `function arraySum(arr) {
-    let total = 0;
-    for (let i = 0; i < arr.length; i += 2) {  // Bug: wrong step
-        total += arr[i];
+            javascript: `const readline = require('readline');
+const rl = readline.createInterface({ input: process.stdin });
+rl.on('line', (line) => {
+    const arr = line.trim().split(' ').map(Number);
+    function arraySum(arr) {
+        let total = 0;
+        for (let i = 0; i < arr.length; i += 2) {  // Bug: wrong step
+            total += arr[i];
+        }
+        return total;
     }
-    return total;
-}
-
-console.log(arraySum(arr));`,
-            java: `public class Main {
+    console.log(arraySum(arr));
+    rl.close();
+});`,
+            java: `import java.util.Scanner;
+public class Main {
     public static int arraySum(int[] arr) {
         int total = 0;
         for (int i = 0; i < arr.length; i += 2) {  // Bug: wrong step
@@ -650,7 +719,9 @@ console.log(arraySum(arr));`,
         return total;
     }
     public static void main(String[] args) {
-        /*INPUT*/
+        Scanner sc = new Scanner(System.in);
+        int[] arr = new int[5];
+        for (int i = 0; i < 5; i++) arr[i] = sc.nextInt();
         System.out.println(arraySum(arr));
     }
 }`,
@@ -663,8 +734,9 @@ int arraySum(int arr[], int size) {
     return total;
 }
 int main() {
-    /*INPUT*/
-    printf("%d\n", arraySum(arr, n));
+    int arr[5];
+    for (int i = 0; i < 5; i++) scanf("%d", &arr[i]);
+    printf("%d\\n", arraySum(arr, 5));
     return 0;
 }`,
             cpp: `#include <iostream>
@@ -677,8 +749,9 @@ int arraySum(int arr[], int size) {
     return total;
 }
 int main() {
-    /*INPUT*/
-    cout << arraySum(arr, n) << endl;
+    int arr[5];
+    for (int i = 0; i < 5; i++) cin >> arr[i];
+    cout << arraySum(arr, 5) << endl;
     return 0;
 }`,
         },
@@ -693,7 +766,7 @@ int main() {
         id: 5,
         title: "Fix Count Occurrences",
         description:
-            "countOccurrences should count ALL times `target` appears in the array, but it stops after the first match.",
+            "countOccurrences should count ALL times `target` appears in an array of 5 numbers, but it stops after the first match.\n\nInput format: 5 numbers followed by target (6 values).",
         inputVarNames: ["a", "b", "c", "d", "e", "target"],
         inputPreamble: {
             python: "arr = [{0}, {1}, {2}, {3}, {4}]\ntarget = {5}",
@@ -711,20 +784,29 @@ int main() {
             break  # Bug: shouldn't break
     return count
 
+nums = list(map(int, input().split()))
+arr, target = nums[:5], nums[5]
 print(count_occurrences(arr, target))`,
-            javascript: `function countOccurrences(arr, target) {
-    let count = 0;
-    for (let num of arr) {
-        if (num === target) {
-            count++;
-            break;  // Bug: shouldn't break
+            javascript: `const readline = require('readline');
+const rl = readline.createInterface({ input: process.stdin });
+rl.on('line', (line) => {
+    const nums = line.trim().split(' ').map(Number);
+    const arr = nums.slice(0, 5), target = nums[5];
+    function countOccurrences(arr, target) {
+        let count = 0;
+        for (let num of arr) {
+            if (num === target) {
+                count++;
+                break;  // Bug: shouldn't break
+            }
         }
+        return count;
     }
-    return count;
-}
-
-console.log(countOccurrences(arr, target));`,
-            java: `public class Main {
+    console.log(countOccurrences(arr, target));
+    rl.close();
+});`,
+            java: `import java.util.Scanner;
+public class Main {
     public static int countOccurrences(int[] arr, int target) {
         int count = 0;
         for (int num : arr) {
@@ -736,7 +818,10 @@ console.log(countOccurrences(arr, target));`,
         return count;
     }
     public static void main(String[] args) {
-        /*INPUT*/
+        Scanner sc = new Scanner(System.in);
+        int[] arr = new int[5];
+        for (int i = 0; i < 5; i++) arr[i] = sc.nextInt();
+        int target = sc.nextInt();
         System.out.println(countOccurrences(arr, target));
     }
 }`,
@@ -752,8 +837,10 @@ int countOccurrences(int arr[], int size, int target) {
     return count;
 }
 int main() {
-    /*INPUT*/
-    printf("%d\n", countOccurrences(arr, n, target));
+    int arr[5], target;
+    for (int i = 0; i < 5; i++) scanf("%d", &arr[i]);
+    scanf("%d", &target);
+    printf("%d\\n", countOccurrences(arr, 5, target));
     return 0;
 }`,
             cpp: `#include <iostream>
@@ -769,8 +856,10 @@ int countOccurrences(int arr[], int size, int target) {
     return count;
 }
 int main() {
-    /*INPUT*/
-    cout << countOccurrences(arr, n, target) << endl;
+    int arr[5], target;
+    for (int i = 0; i < 5; i++) cin >> arr[i];
+    cin >> target;
+    cout << countOccurrences(arr, 5, target) << endl;
     return 0;
 }`,
         },

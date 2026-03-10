@@ -5,7 +5,7 @@ import {
     Save, RefreshCw, Database, AlertCircle, CheckCircle2, Pencil, ArrowUp, ArrowDown,
 } from "lucide-react";
 import {
-    getAllQuestionsForAdmin, saveQuestions, seedAllQuestionsIfEmpty,
+    getAllQuestionsForAdmin, saveQuestions, seedAllQuestionsIfEmpty, reseedDebugOnly,
     type QuizQuestion, type DebugQuestion, type CodingQuestion, type RoundType,
 } from "@/react-app/lib/questionService";
 
@@ -352,6 +352,7 @@ export default function QuestionBank() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [seeding, setSeeding] = useState(false);
+    const [reseedingDebug, setReseedingDebug] = useState(false);
     const [dirty, setDirty] = useState(false);
 
     const currentKey = `${activeType}_door${activeDoor}`;
@@ -407,6 +408,19 @@ export default function QuestionBank() {
         }
     };
 
+    const handleReseedDebug = async () => {
+        setReseedingDebug(true);
+        try {
+            await reseedDebugOnly();
+            toast.success("Debug questions reseeded with native-input templates!");
+            await load();
+        } catch {
+            toast.error("Reseed failed.");
+        } finally {
+            setReseedingDebug(false);
+        }
+    };
+
     const addQuestion = () => {
         const nextId = currentQuestions.length + 1;
         const blank =
@@ -446,6 +460,15 @@ export default function QuestionBank() {
                     >
                         <Database className="w-4 h-4" />
                         {seeding ? "Seeding…" : "Seed from Bundled"}
+                    </button>
+                    <button
+                        onClick={handleReseedDebug}
+                        disabled={reseedingDebug || loading}
+                        title="Force-overwrite debug questions in Firestore with the latest native-input templates"
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-400 text-sm font-medium transition-all disabled:opacity-50"
+                    >
+                        <Bug className="w-4 h-4" />
+                        {reseedingDebug ? "Reseeding…" : "Reseed Debug"}
                     </button>
                     <button
                         onClick={load}

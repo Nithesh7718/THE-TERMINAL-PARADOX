@@ -94,6 +94,47 @@ export async function seedAllQuestionsIfEmpty(): Promise<{ seeded: number }> {
     return { seeded };
 }
 
+/** Force-overwrite ALL question slots in Firestore with the latest bundled data */
+export async function forceReseedAllQuestions(): Promise<{ seeded: number }> {
+    const [
+        { door1Questions, door2Questions, door3Questions },
+        { door1DebugQuestions, door2DebugQuestions, door3DebugQuestions },
+        { getCodingQuestionsForDoor },
+    ] = await Promise.all([
+        import("@/react-app/data/quizQuestions"),
+        import("@/react-app/data/debugQuestions"),
+        import("@/react-app/data/codingQuestions"),
+    ]);
+
+    const slots: { type: RoundType; door: number; data: unknown[] }[] = [
+        { type: "quiz", door: 1, data: door1Questions },
+        { type: "quiz", door: 2, data: door2Questions },
+        { type: "quiz", door: 3, data: door3Questions },
+        { type: "debug", door: 1, data: door1DebugQuestions },
+        { type: "debug", door: 2, data: door2DebugQuestions },
+        { type: "debug", door: 3, data: door3DebugQuestions },
+        { type: "coding", door: 1, data: getCodingQuestionsForDoor(1) },
+        { type: "coding", door: 2, data: getCodingQuestionsForDoor(2) },
+        { type: "coding", door: 3, data: getCodingQuestionsForDoor(3) },
+    ];
+
+    await Promise.all(slots.map(({ type, door, data }) =>
+        setDoc(qKey(type, door), { questions: data, updatedAt: new Date().toISOString() })
+    ));
+    return { seeded: slots.length };
+}
+
+/** Force-overwrite only debug question slots — useful when buggy code templates change */
+export async function reseedDebugOnly(): Promise<void> {
+    const { door1DebugQuestions, door2DebugQuestions, door3DebugQuestions } =
+        await import("@/react-app/data/debugQuestions");
+    await Promise.all([
+        setDoc(qKey("debug", 1), { questions: door1DebugQuestions, updatedAt: new Date().toISOString() }),
+        setDoc(qKey("debug", 2), { questions: door2DebugQuestions, updatedAt: new Date().toISOString() }),
+        setDoc(qKey("debug", 3), { questions: door3DebugQuestions, updatedAt: new Date().toISOString() }),
+    ]);
+}
+
 // ── Read all slots for admin ──────────────────────────────────────
 export async function getAllQuestionsForAdmin(): Promise<Record<string, unknown[]>> {
     const keys: { type: RoundType; door: number }[] = [
