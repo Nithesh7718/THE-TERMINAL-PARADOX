@@ -7,7 +7,7 @@ import {
     ChevronUp,
     ChevronDown,
 } from "lucide-react";
-import { subscribeToUsers, updateUserScore, type FSUser } from "@/react-app/lib/userService";
+import { subscribeToUsers, adminUpdateUser, type FSUser } from "@/react-app/lib/userService";
 import { doc, deleteDoc } from "firebase/firestore";
 import { db } from "@/react-app/lib/firebase";
 import { isAdmin } from "@/react-app/lib/adminAuth";
@@ -26,6 +26,7 @@ const EMPTY_FORM = {
     roundsCompleted: 0,
     lastActive: new Date().toISOString().split("T")[0],
     status: "active" as FSUser["status"],
+    role: "participant" as FSUser["role"],
 };
 
 export default function AdminUsers() {
@@ -77,11 +78,11 @@ export default function AdminUsers() {
         setForm({
             name: user.name,
             email: user.email,
-            role: user.role,
             score: user.score,
             roundsCompleted: user.roundsCompleted,
             lastActive: user.lastActive,
             status: user.status,
+            role: user.role,
         });
         setModalOpen(true);
     };
@@ -90,7 +91,13 @@ export default function AdminUsers() {
         if (!form.name || !form.email) { toast.error("Name and email are required."); return; }
         try {
             if (editing) {
-                await updateUserScore(editing.email, form.score, form.roundsCompleted);
+                await adminUpdateUser(editing.email, {
+                    name: form.name,
+                    score: form.score,
+                    roundsCompleted: form.roundsCompleted,
+                    status: form.status,
+                    role: form.role,
+                });
                 toast.success("User updated successfully.");
             } else {
                 toast.info("Ask participant to self-register via the login page.");
@@ -188,23 +195,32 @@ export default function AdminUsers() {
                                     </td>
                                     <td className="px-5 py-4 text-white/50">{user.email}</td>
                                     <td className="px-5 py-4">
-                                        <div className="flex items-center gap-2">
-                                            <div className="flex-1 max-w-[80px] h-1.5 bg-white/5 rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-violet-500 rounded-full"
-                                                    style={{ width: `${user.score}%` }}
-                                                />
+                                        <div className="flex flex-col gap-1">
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex-1 max-w-[80px] h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-violet-500 rounded-full w-[var(--progress-width)]"
+                                                        style={{ "--progress-width": `${Math.min(user.score / (user.roundsCompleted || 1), 100)}%` } as React.CSSProperties}
+                                                    />
+                                                </div>
+                                                <span className="text-white/80 font-bold">{user.score}</span>
                                             </div>
-                                            <span className="text-white/80 font-semibold">{user.score}%</span>
+                                            <div className="flex gap-2 text-[10px] text-white/30 font-medium">
+                                                <span>R1: {user.roundScores?.[1] ?? 0}</span>
+                                                <span>R2: {user.roundScores?.[2] ?? 0}</span>
+                                                <span>R3: {user.roundScores?.[3] ?? 0}</span>
+                                            </div>
                                         </div>
                                     </td>
                                     <td className="px-5 py-4 text-white/50">{user.roundsCompleted}/3</td>
                                     <td className="px-5 py-4">
-                                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${user.status === "active" ? "bg-emerald-500/20 text-emerald-400" : "bg-white/5 text-white/30"}`}>
-                                            {user.status}
-                                        </span>
+                                        <div className="flex flex-col gap-0.5">
+                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md w-fit ${user.status === "active" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-white/5 text-white/30"}`}>
+                                                {user.status.toUpperCase()}
+                                            </span>
+                                            <span className="text-[9px] text-white/20 whitespace-nowrap">{user.lastActive.split('T')[0]}</span>
+                                        </div>
                                     </td>
-                                    <td className="px-5 py-4 text-white/40 text-xs">{user.lastActive}</td>
                                     <td className="px-5 py-4">
                                         <div className="flex items-center gap-2 justify-end">
                                             {adminAccess && (
@@ -251,8 +267,11 @@ export default function AdminUsers() {
                         <div className="space-y-4">
                             {(["name", "email"] as const).map((f) => (
                                 <div key={f}>
-                                    <label className="block text-xs text-white/40 uppercase tracking-wider mb-1.5 capitalize">{f}</label>
+                                    <label htmlFor={`field-${f}`} className="block text-xs text-white/40 uppercase tracking-wider mb-1.5 capitalize">{f}</label>
                                     <input
+                                        id={`field-${f}`}
+                                        title={f}
+                                        placeholder={`Enter ${f}`}
                                         type={f === "email" ? "email" : "text"}
                                         value={form[f]}
                                         onChange={e => setForm(p => ({ ...p, [f]: e.target.value }))}
@@ -262,8 +281,10 @@ export default function AdminUsers() {
                             ))}
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">Role</label>
+                                    <label htmlFor="user-role" className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">Role</label>
                                     <select
+                                        id="user-role"
+                                        title="User Role"
                                         value={form.role}
                                         onChange={e => setForm(p => ({ ...p, role: e.target.value as AppUser["role"] }))}
                                         className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-violet-500/50 transition-all"
@@ -273,8 +294,10 @@ export default function AdminUsers() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">Status</label>
+                                    <label htmlFor="user-status" className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">Status</label>
                                     <select
+                                        id="user-status"
+                                        title="User Status"
                                         value={form.status}
                                         onChange={e => setForm(p => ({ ...p, status: e.target.value as AppUser["status"] }))}
                                         className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-violet-500/50 transition-all"
@@ -284,8 +307,11 @@ export default function AdminUsers() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">Score (%)</label>
+                                    <label htmlFor="user-score" className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">Score (%)</label>
                                     <input
+                                        id="user-score"
+                                        title="Score Percentage"
+                                        placeholder="0"
                                         type="number" min={0} max={100}
                                         value={form.score}
                                         onChange={e => setForm(p => ({ ...p, score: parseInt(e.target.value) || 0 }))}
@@ -293,8 +319,11 @@ export default function AdminUsers() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">Rounds Done</label>
+                                    <label htmlFor="user-rounds" className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">Rounds Done</label>
                                     <input
+                                        id="user-rounds"
+                                        title="Rounds Completed"
+                                        placeholder="0"
                                         type="number" min={0} max={3}
                                         value={form.roundsCompleted}
                                         onChange={e => setForm(p => ({ ...p, roundsCompleted: parseInt(e.target.value) || 0 }))}

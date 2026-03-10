@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Users, Trophy, Activity, TrendingUp, Star, PlayCircle, StopCircle, Download, ShieldCheck } from "lucide-react";
 import { subscribeToUsers, type FSUser } from "@/react-app/lib/userService";
-import { subscribeToGameState, startGame, stopGame, sendBroadcast, type GameState } from "@/react-app/lib/gameState";
+import { subscribeToGameState, startGame, stopGame, sendBroadcast, setPassingGrades, type GameState } from "@/react-app/lib/gameState";
 import { toast } from "sonner";
 import { Megaphone } from "lucide-react";
 import { downloadSEBConfig } from "@/react-app/lib/sebDetection";
@@ -66,7 +66,12 @@ function BarChart({ data }: { data: { name: string; value: number }[] }) {
 
 export default function AdminDashboard() {
     const [users, setUsers] = useState<FSUser[]>([]);
-    const [gameState, setGameState] = useState<GameState>({ started: false, activeRound: 1, broadcastMessage: "" });
+    const [gameState, setGameState] = useState<GameState>({
+        started: false,
+        activeRound: 1,
+        broadcastMessage: "",
+        passingGrades: { 1: 50, 2: 50, 3: 50 }
+    });
     const [toggling, setToggling] = useState(false);
     const [entryPw, setEntryPw] = useState("");
     const [quitPw, setQuitPw] = useState("");
@@ -74,6 +79,8 @@ export default function AdminDashboard() {
     const [sebOpen, setSebOpen] = useState(false);
     const [broadcastInput, setBroadcastInput] = useState("");
     const [broadcastSending, setBroadcastSending] = useState(false);
+    const [passGrades, setPassGrades] = useState({ 1: 50, 2: 50, 3: 50 });
+    const [savingGrades, setSavingGrades] = useState(false);
 
     // Real-time users from Firestore
     useEffect(() => {
@@ -83,7 +90,12 @@ export default function AdminDashboard() {
 
     // Real-time game state from Firestore
     useEffect(() => {
-        const unsub = subscribeToGameState(setGameState);
+        const unsub = subscribeToGameState((state) => {
+            setGameState(state);
+            if (state.passingGrades) {
+                setPassGrades(state.passingGrades as any);
+            }
+        });
         return unsub;
     }, []);
 
@@ -136,6 +148,17 @@ export default function AdminDashboard() {
         } catch { toast.error("Failed to clear."); }
     };
 
+    const handleSaveGrades = async () => {
+        setSavingGrades(true);
+        try {
+            await setPassingGrades(passGrades);
+            toast.success("Passing grades updated for all participants!");
+        } catch {
+            toast.error("Failed to update passing grades.");
+        } finally {
+            setSavingGrades(false);
+        }
+    };
 
     const totalUsers = users.length;
     const activeSessions = users.filter(u => u.status === "active").length;
@@ -217,6 +240,38 @@ export default function AdminDashboard() {
                         </div>
                     </div>
                 )}
+            </div>
+
+            {/* Passing Grades Management */}
+            <div className="bg-[#0f0f1a] border border-white/5 rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-6">
+                    <Trophy className="w-4 h-4 text-emerald-400" />
+                    <h3 className="text-white font-semibold text-sm">Passing Grades per Round (%)</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+                    {[1, 2, 3].map(r => (
+                        <div key={r}>
+                            <label htmlFor={`passGrade-${r}`} className="block text-xs text-white/40 uppercase tracking-wider mb-2">Round {r} Min Score</label>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    id={`passGrade-${r}`}
+                                    type="number"
+                                    placeholder="50"
+                                    value={passGrades[r as 1 | 2 | 3]}
+                                    onChange={e => setPassGrades(prev => ({ ...prev, [r]: parseInt(e.target.value) || 0 }))}
+                                    min="0" max="100"
+                                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-emerald-500/50" />
+                                <span className="text-white/30 text-sm">%</span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <button
+                    onClick={handleSaveGrades}
+                    disabled={savingGrades}
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-all disabled:opacity-60">
+                    {savingGrades ? "Saving..." : "Save Passing Grades"}
+                </button>
             </div>
 
             {/* Broadcast Panel — full width now */}

@@ -154,17 +154,28 @@ export default function Home() {
   };
 
   // Compute rounds with correct door statuses based on progress
-  const rounds = stubRounds.map(round => ({
-    ...round,
-    doors: round.doors.map(door => ({
-      ...door,
-      status: round.roundNumber < currentRound
-        ? "completed" as const
-        : round.roundNumber === currentRound
-          ? "available" as const
-          : "locked" as const,
-    }))
-  }));
+  const rounds = stubRounds.map(round => {
+    const passingGrade = gameState?.passingGrades?.[round.roundNumber] ?? 50;
+    let subtitle = round.subtitle;
+
+    // Dynamically update passing grade in subtitle
+    if (round.roundNumber === 1) subtitle = `15 MCQ questions • 15 minutes • Score ≥${passingGrade}% to advance`;
+    else if (round.roundNumber === 2) subtitle = `5 debug problems • 15 minutes • Score ≥${passingGrade}% to advance`;
+    else if (round.roundNumber === 3) subtitle = `3 implementation challenges • 30 minutes • Score ≥${passingGrade}% to conquer`;
+
+    return {
+      ...round,
+      subtitle,
+      doors: round.doors.map(door => ({
+        ...door,
+        status: round.roundNumber < currentRound
+          ? "completed" as const
+          : round.roundNumber === currentRound
+            ? "available" as const
+            : "locked" as const,
+      }))
+    };
+  });
 
   const handleScrollToRounds = () => {
     roundsRef.current?.scrollIntoView({ behavior: "smooth" });

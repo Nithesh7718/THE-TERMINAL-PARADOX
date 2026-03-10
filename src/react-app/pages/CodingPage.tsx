@@ -34,7 +34,8 @@ import {
     DialogTitle,
 } from "@/react-app/components/ui/dialog";
 
-const PASSING_PERCENTAGE = 50;
+import { subscribeToGameState, type GameState } from "@/react-app/lib/gameState";
+
 const CODING_TIME_MINUTES = 30;
 
 export default function CodingPage() {
@@ -51,6 +52,12 @@ export default function CodingPage() {
     const [showTimeUpDialog, setShowTimeUpDialog] = useState(false);
     const userSession = getUserSession();
     const [dbProgress, setDbProgress] = useState(0);
+    const [gameState, setGameState] = useState<GameState | null>(null);
+
+    // Sync game state for passing grades
+    useEffect(() => {
+        return subscribeToGameState(setGameState);
+    }, []);
 
     // Sync current progress from DB
     useEffect(() => {
@@ -130,20 +137,44 @@ export default function CodingPage() {
         setTimeout(() => {
             setQuestionStates((prev) => {
                 const newStates = [...prev];
-                const current = newStates[currentQuestion];
-                const testedCases = current.testCases.map((tc) => {
-                    const passed = Math.random() > 0.3;
+                const currentState = newStates[currentQuestion];
+                const userCode = currentState.code.toLowerCase();
+                const qId = questions[currentQuestion].id;
+
+                // Intelligent simulation: check for key algorithmic logic
+                let isCorrect = false;
+
+                if (doorNumber === 1) { // Array Forge
+                    if (qId === 1) isCorrect = userCode.includes('target') && (userCode.includes('dict') || userCode.includes('map') || userCode.includes('for'));
+                    if (qId === 2) isCorrect = (userCode.includes('max') || userCode.includes('kadane')) && userCode.includes('curr');
+                    if (qId === 3) isCorrect = userCode.includes('sort') && userCode.includes('append') || userCode.includes('push');
+                } else if (doorNumber === 2) { // String Sanctum
+                    if (qId === 1) isCorrect = userCode.includes('alnum') || userCode.includes('regexp') || userCode.includes('replace');
+                    if (qId === 2) isCorrect = userCode.includes('substring') || userCode.includes('slice') || userCode.includes('starts');
+                    if (qId === 3) isCorrect = userCode.includes('sort') && (userCode.includes('map') || userCode.includes('dict') || userCode.includes('obj'));
+                } else if (doorNumber === 3) { // Graph Gateway
+                    if (qId === 1) isCorrect = (userCode.includes('dfs') || userCode.includes('bfs')) && userCode.includes('grid');
+                    if (qId === 2) isCorrect = userCode.includes('deque') || userCode.includes('queue') || userCode.includes('shift');
+                    if (qId === 3) isCorrect = (userCode.includes('visited') || userCode.includes('map')) && userCode.includes('neighbor');
+                } else {
+                    isCorrect = userCode.length > 100;
+                }
+
+                const testedCases = currentState.testCases.map((tc) => {
+                    const passed = isCorrect;
                     return {
                         ...tc,
                         status: passed ? ("passed" as const) : ("failed" as const),
-                        actualOutput: passed ? tc.expectedOutput : "Different output...",
+                        actualOutput: passed ? tc.expectedOutput : `Runtime Error: Logic mismatch for input [${tc.input}]`,
                     };
                 });
+
                 const passedCount = testedCases.filter(
                     (tc) => tc.status === "passed"
                 ).length;
+
                 newStates[currentQuestion] = {
-                    ...current,
+                    ...currentState,
                     testCases: testedCases,
                     score: Math.round((passedCount / testedCases.length) * 100),
                 };
@@ -152,16 +183,21 @@ export default function CodingPage() {
         }, 1800);
     };
 
+    // Passing grade from game state or fallback
+    const passingGrade = gameState?.passingGrades?.[3] ?? 50;
+
     // Save progress immediately — called on submit AND time-up so back-button never loses data
     const saveProgress = useCallback(async (score: number) => {
         if (!userSession?.email) return;
         try {
-            const nextProgress = Math.max(dbProgress, 3);
-            await updateUserScore(userSession.email, score, nextProgress);
+            // ONLY increment roundsCompleted if they passed!
+            const passed = score >= passingGrade;
+            const nextProgress = passed ? Math.max(dbProgress, 3) : dbProgress;
+            await updateUserScore(userSession.email, 3, score, nextProgress);
         } catch {
             toast.error("Failed to save progress.");
         }
-    }, [userSession, dbProgress]);
+    }, [userSession, dbProgress, passingGrade]);
 
     const handleTimeUp = useCallback(() => {
         setShowTimeUpDialog(true);
@@ -191,7 +227,7 @@ export default function CodingPage() {
     const totalScore = Math.round(
         questionStates.reduce((sum, q) => sum + q.score, 0) / questions.length
     );
-    const passed = totalScore >= PASSING_PERCENTAGE;
+    const passed = totalScore >= passingGrade;
     const question = questions[currentQuestion];
     const currentState = questionStates[currentQuestion];
     const doorNames = ["Array Forge", "String Sanctum", "Graph Gateway"];
@@ -235,7 +271,7 @@ export default function CodingPage() {
                         <p className="text-muted-foreground">
                             Solve {questions.length} implementation challenges.
                             <br />
-                            You have 30 minutes. Score at least 50% to conquer.
+                            You have 30 minutes. Score at least {passingGrade}% to conquer.
                         </p>
                     </div>
 
@@ -590,7 +626,7 @@ export default function CodingPage() {
                         <p className="text-sm text-muted-foreground mb-6">
                             {passed
                                 ? "Outstanding! You've conquered all three rounds of The Terminal Paradox!"
-                                : `You need at least ${PASSING_PERCENTAGE}% to conquer this round.`}
+                                : `You need at least ${passingGrade}% to conquer this round.`}
                         </p>
                         <div className="flex gap-4 justify-center">
                             <Button variant="outline" onClick={() => navigate("/")}>

@@ -7,7 +7,13 @@ const GAME_DOC = doc(db, "config", "gameState");
 export async function startGame(): Promise<void> {
     const snap = await getDoc(GAME_DOC);
     if (!snap.exists()) {
-        await setDoc(GAME_DOC, { started: true, startedAt: new Date().toISOString(), activeRound: 1, broadcastMessage: "" });
+        await setDoc(GAME_DOC, {
+            started: true,
+            startedAt: new Date().toISOString(),
+            activeRound: 1,
+            broadcastMessage: "",
+            passingGrades: { 1: 50, 2: 50, 3: 50 }
+        });
     } else {
         await updateDoc(GAME_DOC, { started: true, startedAt: new Date().toISOString() });
     }
@@ -28,10 +34,16 @@ export async function setActiveRound(round: number): Promise<void> {
     await updateDoc(GAME_DOC, { activeRound: round });
 }
 
+/** Set passing grades for each round */
+export async function setPassingGrades(grades: Record<number, number>): Promise<void> {
+    await updateDoc(GAME_DOC, { passingGrades: grades });
+}
+
 export interface GameState {
     started: boolean;
     broadcastMessage?: string;
     activeRound?: number;
+    passingGrades?: Record<number, number>;
 }
 
 /** Subscribe to real-time game state — call returned function to unsubscribe */
@@ -41,7 +53,8 @@ export function subscribeToGameState(callback: (state: GameState) => void): () =
         callback({
             started: d?.started ?? false,
             broadcastMessage: d?.broadcastMessage || "",
-            activeRound: d?.activeRound ?? 1
+            activeRound: d?.activeRound ?? 1,
+            passingGrades: d?.passingGrades || { 1: 50, 2: 50, 3: 50 }
         });
     });
 }
@@ -53,6 +66,7 @@ export async function getGameState(): Promise<GameState> {
     return {
         started: d?.started ?? false,
         broadcastMessage: d?.broadcastMessage || "",
-        activeRound: d?.activeRound ?? 1
+        activeRound: d?.activeRound ?? 1,
+        passingGrades: d?.passingGrades || { 1: 50, 2: 50, 3: 50 }
     };
 }

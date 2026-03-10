@@ -34,7 +34,8 @@ import {
   DialogTitle,
 } from "@/react-app/components/ui/dialog";
 
-const PASSING_PERCENTAGE = 50;
+import { subscribeToGameState, type GameState } from "@/react-app/lib/gameState";
+
 const DEBUG_TIME_MINUTES = 15;
 
 export default function DebugPage() {
@@ -52,6 +53,12 @@ export default function DebugPage() {
   const [showTimeUpDialog, setShowTimeUpDialog] = useState(false);
   const userSession = getUserSession();
   const [dbProgress, setDbProgress] = useState(0);
+  const [gameState, setGameState] = useState<GameState | null>(null);
+
+  // Sync game state for passing grades
+  useEffect(() => {
+    return subscribeToGameState(setGameState);
+  }, []);
 
   // Sync current progress from DB
   useEffect(() => {
@@ -140,16 +147,36 @@ export default function DebugPage() {
       setQuestionStates((prev) => {
         const newStates = [...prev];
         const currentState = newStates[currentQuestion];
+        const userCode = currentState.code;
+        const qId = questions[currentQuestion].id;
 
-        // Randomly pass/fail tests for demo (in production, real execution)
+        // Intelligent simulation: check if the user fixed the known bug
+        let isCorrect = false;
+
+        if (doorNumber === 1) { // Syntax Maze
+          if (qId === 1) isCorrect = userCode.includes('+') && !userCode.includes('a - b');
+          if (qId === 2) isCorrect = (userCode.includes('float(\'-inf\')') || userCode.includes('Number.MIN_SAFE_INTEGER') || userCode.includes('Integer.MIN_VALUE') || userCode.includes('arr[0]'));
+          if (qId === 3) isCorrect = userCode.includes('range(1, 6)') || userCode.includes('i <= 5') || userCode.includes('1, 5 + 1');
+          if (qId === 4) isCorrect = userCode.includes('::-1') || userCode.includes('i >= 0') || userCode.includes('i--');
+          if (qId === 5) isCorrect = userCode.includes('return 1') && userCode.includes('n == 0');
+        } else if (doorNumber === 2) { // Logic Trap
+          if (qId === 1) isCorrect = userCode.includes('== 0') || userCode.includes('=== 0');
+          if (qId === 2) isCorrect = userCode.includes('i += 1') || userCode.includes('i++') || (userCode.includes('range') && !userCode.includes(', 2)'));
+          if (qId === 3) isCorrect = !!userCode.match(/result\s*=\s*1/);
+          if (qId === 4) isCorrect = userCode.includes('len(s) - 1') || userCode.includes('s.length - 1');
+          if (qId === 5) isCorrect = !userCode.includes('break');
+        } else {
+          isCorrect = userCode.length > 50;
+        }
+
         const testedCases = currentState.testCases.map((tc) => {
-          const passed = Math.random() > 0.3; // 70% chance to pass for demo
+          const passed = isCorrect;
           return {
             ...tc,
             status: passed ? ("passed" as const) : ("failed" as const),
             actualOutput: passed
               ? tc.expectedOutput
-              : "Different output...",
+              : `Debug Error: Logic mismatch for input [${tc.input}]`,
           };
         });
 
@@ -170,16 +197,21 @@ export default function DebugPage() {
     }, 1500);
   };
 
+  // Passing grade from game state or fallback
+  const passingGrade = gameState?.passingGrades?.[2] ?? 50;
+
   // Save progress immediately — called on submit AND time-up so back-button never loses data
   const saveProgress = useCallback(async (score: number) => {
     if (!userSession?.email) return;
     try {
-      const nextProgress = Math.max(dbProgress, 2);
-      await updateUserScore(userSession.email, score, nextProgress);
+      // ONLY increment roundsCompleted if they passed!
+      const passed = score >= passingGrade;
+      const nextProgress = passed ? Math.max(dbProgress, 2) : dbProgress;
+      await updateUserScore(userSession.email, 2, score, nextProgress);
     } catch {
       toast.error("Failed to save progress.");
     }
-  }, [userSession, dbProgress]);
+  }, [userSession, dbProgress, passingGrade]);
 
   const handleTimeUp = useCallback(() => {
     setShowTimeUpDialog(true);
@@ -234,7 +266,7 @@ export default function DebugPage() {
       questionStates.reduce((sum, q) => sum + q.score, 0) / questions.length
     ) - hintsUsed.size * HINT_PENALTY
   );
-  const passed = totalScore >= PASSING_PERCENTAGE;
+  const passed = totalScore >= passingGrade;
 
   const question = questions[currentQuestion];
   const currentState = questionStates[currentQuestion];
@@ -283,7 +315,7 @@ export default function DebugPage() {
             <p className="text-muted-foreground">
               Find and fix the bugs in 5 coding challenges.
               <br />
-              You have 15 minutes. Score at least 50% to advance.
+              You have 15 minutes. Score at least {passingGrade}% to advance.
             </p>
           </div>
 
@@ -558,7 +590,7 @@ export default function DebugPage() {
             <p className="text-sm text-muted-foreground mb-6">
               {passed
                 ? "You've passed Round 2! Round 3 is now unlocked."
-                : `You need at least ${PASSING_PERCENTAGE}% to advance.`}
+                : `You need at least ${passingGrade}% to advance.`}
             </p>
             <div className="flex gap-4 justify-center">
               <Button variant="outline" onClick={() => navigate("/")}>

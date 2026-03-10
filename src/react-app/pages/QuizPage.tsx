@@ -26,7 +26,8 @@ import {
   DialogTitle,
 } from "@/react-app/components/ui/dialog";
 
-const PASSING_PERCENTAGE = 50;
+import { subscribeToGameState, type GameState } from "@/react-app/lib/gameState";
+
 const QUIZ_TIME_MINUTES = 15;
 
 export default function QuizPage() {
@@ -43,6 +44,7 @@ export default function QuizPage() {
   const [showTimeUpDialog, setShowTimeUpDialog] = useState(false);
   const userSession = getUserSession();
   const [dbProgress, setDbProgress] = useState(0);
+  const [gameState, setGameState] = useState<GameState | null>(null);
 
   // Load questions from Firestore (with static fallback)
   useEffect(() => {
@@ -52,6 +54,11 @@ export default function QuizPage() {
       setQuestionsLoaded(true);
     });
   }, [doorNumber]);
+
+  // Sync game state for passing grades
+  useEffect(() => {
+    return subscribeToGameState(setGameState);
+  }, []);
 
   // Sync current progress from DB
   useEffect(() => {
@@ -81,16 +88,21 @@ export default function QuizPage() {
     }
   };
 
+  // Passing grade from game state or fallback
+  const passingGrade = gameState?.passingGrades?.[1] ?? 50;
+
   // Save progress immediately — called on submit AND time-up so back-button never loses data
   const saveProgress = useCallback(async (pct: number) => {
     if (!userSession?.email) return;
     try {
-      const nextProgress = Math.max(dbProgress, 1);
-      await updateUserScore(userSession.email, pct, nextProgress);
+      // ONLY increment roundsCompleted if they passed!
+      const passed = pct >= passingGrade;
+      const nextProgress = passed ? Math.max(dbProgress, 1) : dbProgress;
+      await updateUserScore(userSession.email, 1, pct, nextProgress);
     } catch {
       toast.error("Failed to save progress.");
     }
-  }, [userSession, dbProgress]);
+  }, [userSession, dbProgress, passingGrade]);
 
   const handleTimeUp = useCallback(() => {
     setShowTimeUpDialog(true);
@@ -127,7 +139,7 @@ export default function QuizPage() {
 
   const score = calculateScore();
   const percentage = Math.round((score / questions.length) * 100);
-  const passed = percentage >= PASSING_PERCENTAGE;
+  const passed = percentage >= passingGrade;
 
   const answeredCount = answers.filter((a) => a !== null).length;
   const progress = (answeredCount / questions.length) * 100;
@@ -321,7 +333,7 @@ export default function QuizPage() {
             <p className="text-sm text-muted-foreground mb-6">
               {passed
                 ? "You've passed Round 1! Round 2 is now unlocked."
-                : `You need at least ${PASSING_PERCENTAGE}% to advance. Keep practicing!`}
+                : `You need at least ${passingGrade}% to advance. Keep practicing!`}
             </p>
             <div className="flex gap-4 justify-center">
               <Button variant="outline" onClick={() => navigate("/")}>

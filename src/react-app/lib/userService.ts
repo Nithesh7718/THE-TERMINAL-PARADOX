@@ -10,7 +10,8 @@ export interface FSUser {
     name: string;
     email: string;
     password: string;    // plain for this demo — hash in production
-    score: number;
+    score: number;       // total points across all rounds
+    roundScores: Record<number, number>; // Individual round scores
     roundsCompleted: number;
     lastActive: string;
     status: "active" | "inactive";
@@ -34,7 +35,9 @@ export async function registerUser(name: string, email: string, password: string
     if (existing.exists()) throw new Error("Account already exists. Sign in instead.");
     await setDoc(ref, {
         id, name, email, password,
-        score: 0, roundsCompleted: 0,
+        score: 0,
+        roundScores: {},
+        roundsCompleted: 0,
         lastActive: new Date().toISOString(),
         status: "active",
         role: "participant",
@@ -66,16 +69,39 @@ export async function loginUser(email: string, password: string): Promise<FSUser
     return user;
 }
 
-/** Update a participant's score and progress */
+/** Update a participant's score for a specific round and recalculate total */
 export async function updateUserScore(
     email: string,
-    score: number,
+    roundNumber: number,
+    roundScore: number,
     roundsCompleted: number,
 ): Promise<void> {
+    const id = emailToId(email);
+    const ref = doc(USERS_COL, id);
+    const snap = await getDoc(ref);
+
+    if (!snap.exists()) return;
+    const userData = snap.data() as FSUser;
+
+    // Update individual round score
+    const newRoundScores = { ...userData.roundScores, [roundNumber]: roundScore };
+
+    // Calculate total score from all rounds
+    const totalScore = Object.values(newRoundScores).reduce((acc, s) => acc + s, 0);
+
+    await updateDoc(ref, {
+        score: totalScore,
+        roundScores: newRoundScores,
+        roundsCompleted,
+        lastActive: new Date().toISOString(),
+    });
+}
+
+/** Admin-only: Directly update user document */
+export async function adminUpdateUser(email: string, updates: Partial<FSUser>): Promise<void> {
     const ref = doc(USERS_COL, emailToId(email));
     await updateDoc(ref, {
-        score,
-        roundsCompleted,
+        ...updates,
         lastActive: new Date().toISOString(),
     });
 }

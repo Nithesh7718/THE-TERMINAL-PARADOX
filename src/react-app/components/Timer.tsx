@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Timer as TimerIcon, AlertTriangle } from "lucide-react";
 import { cn } from "@/react-app/lib/utils";
 
@@ -30,10 +30,18 @@ export default function Timer({ initialMinutes, onTimeUp, isPaused = false }: Ti
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
-  const isLowTime = timeLeft <= 60;
-  const isCritical = timeLeft <= 30;
+  const isLowTime = timeLeft <= 300; // 5 minutes
+  const isCritical = timeLeft <= 60; // 1 minute
 
   const percentage = (timeLeft / (initialMinutes * 60)) * 100;
+
+  const progressBarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (progressBarRef.current) {
+      progressBarRef.current.style.width = `${percentage}%`;
+    }
+  }, [percentage]);
 
   return (
     <div
@@ -43,8 +51,8 @@ export default function Timer({ initialMinutes, onTimeUp, isPaused = false }: Ti
         isCritical
           ? "bg-destructive/20 border-destructive/50 animate-pulse"
           : isLowTime
-          ? "bg-chart-3/20 border-chart-3/50"
-          : "bg-card/80 border-border"
+            ? "bg-chart-3/20 border-chart-3/50"
+            : "bg-card/80 border-border"
       )}
     >
       {isCritical ? (
@@ -65,23 +73,23 @@ export default function Timer({ initialMinutes, onTimeUp, isPaused = false }: Ti
             isCritical
               ? "text-destructive"
               : isLowTime
-              ? "text-chart-3"
-              : "text-foreground"
+                ? "text-chart-3"
+                : "text-foreground"
           )}
         >
           {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
         </span>
         <div className="w-20 h-1 bg-muted rounded-full overflow-hidden">
           <div
+            ref={progressBarRef}
             className={cn(
               "h-full rounded-full transition-all duration-1000",
               isCritical
                 ? "bg-destructive"
                 : isLowTime
-                ? "bg-chart-3"
-                : "bg-primary"
+                  ? "bg-chart-3"
+                  : "bg-primary"
             )}
-            style={{ width: `${percentage}%` }}
           />
         </div>
       </div>
