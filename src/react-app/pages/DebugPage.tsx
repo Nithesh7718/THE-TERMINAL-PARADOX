@@ -56,10 +56,8 @@ function buildCode(
   userCode: string,
   tcInput: string
 ): string {
-  const preamble = fillPreamble(
-    (question.inputPreamble as Record<string, string>)[lang] ?? "",
-    tcInput
-  );
+  const preambleTemplate = (question?.inputPreamble as Record<string, string>)?.[lang] ?? "";
+  const preamble = fillPreamble(preambleTemplate, tcInput || "");
   if (userCode.includes("/*INPUT*/")) {
     return userCode.replace("/*INPUT*/", preamble);
   }
@@ -134,9 +132,9 @@ export default function DebugPage() {
       setQuestionStates(
         qs.map((q) => ({
           code: "",
-          testCases: q.testCases.map((tc) => ({
-            input: tc.input,
-            expectedOutput: tc.expectedOutput,
+          testCases: (q?.testCases ?? []).map((tc) => ({
+            input: tc?.input ?? "",
+            expectedOutput: tc?.expectedOutput ?? "",
             actualOutput: "",
             status: "pending" as TCStatus,
           })),
@@ -150,12 +148,13 @@ export default function DebugPage() {
 
   const handleStartChallenge = () => {
     if (!language) return;
+    console.log("Starting challenge with language:", language, "Questions count:", questions.length);
     setQuestionStates(
       questions.map((q) => ({
-        code: q.buggyCode[language] || "",
-        testCases: q.testCases.map((tc) => ({
-          input: tc.input,
-          expectedOutput: tc.expectedOutput,
+        code: q?.buggyCode?.[language] || "",
+        testCases: (q?.testCases ?? []).map((tc) => ({
+          input: tc?.input ?? "",
+          expectedOutput: tc?.expectedOutput ?? "",
           actualOutput: "",
           status: "pending" as TCStatus,
         })),
@@ -245,13 +244,10 @@ export default function DebugPage() {
   const alreadyCompleted = dbProgress !== null && dbProgress >= 2;
 
   const computeFinalScore = useCallback(() => {
-    return Math.max(
-      0,
-      Math.round(
-        questionStates.reduce((sum, q) => sum + q.score, 0) /
-        Math.max(questions.length, 1)
-      ) - hintsUsed.size * HINT_PENALTY
-    );
+    const rawSum = (questionStates ?? []).reduce((sum, q) => sum + (q?.score ?? 0), 0);
+    const count = Math.max(questions.length, 1);
+    const score = Math.round(rawSum / count) - (hintsUsed?.size ?? 0) * HINT_PENALTY;
+    return isFinite(score) ? Math.max(0, score) : 0;
   }, [questionStates, questions.length, hintsUsed]);
 
   const saveProgress = useCallback(
@@ -315,7 +311,27 @@ export default function DebugPage() {
     );
 
   // Safety guard for rendering
-  if (!question || !currentState) return null;
+  if (!question || !currentState) {
+    if (questionsLoaded && questions.length > 0) {
+      console.warn("Safety guard triggered: questions exist but state missing or out of sync.", {
+        currentQuestion,
+        questionsCount: questions.length,
+        statesCount: questionStates.length
+      });
+      return (
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 text-center">
+          <AlertCircle className="w-12 h-12 text-destructive mb-4" />
+          <h2 className="text-xl font-bold text-foreground mb-2">State Synchronization Error</h2>
+          <p className="text-muted-foreground mb-6">
+            The arena couldn't sync with the current problem.
+            Try refreshing or going back to the dashboard.
+          </p>
+          <Button onClick={() => window.location.reload()}>Refresh Arena</Button>
+        </div>
+      );
+    }
+    return null;
+  }
 
   // ── Already completed ──────────────────────────────────────────────
   if (alreadyCompleted && !isSubmitted) {
@@ -463,14 +479,14 @@ export default function DebugPage() {
                 "flex items-center justify-center",
                 currentQuestion === index &&
                 "ring-2 ring-primary ring-offset-2 ring-offset-background",
-                questionStates[index].score >= 100
+                (questionStates[index]?.score ?? 0) >= 100
                   ? "bg-chart-1/20 text-chart-1 border border-chart-1/30"
-                  : questionStates[index].score > 0
+                  : (questionStates[index]?.score ?? 0) > 0
                     ? "bg-chart-3/20 text-chart-3 border border-chart-3/30"
                     : "bg-secondary text-muted-foreground border border-border"
               )}
             >
-              {questionStates[index].isRunning ? (
+              {questionStates[index]?.isRunning ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
                 index + 1
@@ -522,7 +538,7 @@ export default function DebugPage() {
               <span className="text-xs font-semibold text-primary mt-0.5 shrink-0">Variables</span>
               <code className="text-xs text-foreground/80 font-mono break-all">
                 {fillPreamble(
-                  (question.inputPreamble as Record<string, string>)[language ?? "python"] ?? "",
+                  (question.inputPreamble as Record<string, string>)?.[language ?? "python"] ?? "",
                   currentState?.testCases[selectedTestCase]?.input ?? ""
                 )}
               </code>
@@ -600,7 +616,7 @@ export default function DebugPage() {
                       Input (stdin)
                     </p>
                     <pre className="p-3 bg-secondary rounded-lg text-sm font-mono text-foreground overflow-x-auto">
-                      {selectedTc.input || "(no input)"}
+                      {selectedTc?.input || "(no input)"}
                     </pre>
                   </div>
 
@@ -609,44 +625,44 @@ export default function DebugPage() {
                       Expected Output
                     </p>
                     <pre className="p-3 bg-secondary rounded-lg text-sm font-mono text-foreground overflow-x-auto">
-                      {selectedTc.expectedOutput}
+                      {selectedTc?.expectedOutput}
                     </pre>
                   </div>
 
-                  {selectedTc.status !== "pending" && selectedTc.status !== "running" && (
+                  {selectedTc?.status !== "pending" && selectedTc?.status !== "running" && (
                     <div>
                       <p
                         className={cn(
                           "text-xs font-semibold uppercase tracking-wider mb-1 flex items-center gap-2",
-                          selectedTc.status === "passed"
+                          selectedTc?.status === "passed"
                             ? "text-chart-1"
                             : "text-destructive"
                         )}
                       >
                         Your Output{" "}
-                        {selectedTc.status === "passed" ? "✓" : "✗"}
-                        {selectedTc.statusLabel && selectedTc.status !== "passed" && (
+                        {selectedTc?.status === "passed" ? "✓" : "✗"}
+                        {selectedTc?.statusLabel && selectedTc?.status !== "passed" && (
                           <span className="font-normal normal-case text-[10px] px-1.5 py-0.5 bg-destructive/15 rounded">
-                            {selectedTc.statusLabel}
+                            {selectedTc?.statusLabel}
                           </span>
                         )}
                       </p>
                       <pre
                         className={cn(
                           "p-3 rounded-lg text-sm font-mono overflow-x-auto whitespace-pre-wrap",
-                          selectedTc.status === "passed"
+                          selectedTc?.status === "passed"
                             ? "bg-chart-1/10 text-chart-1 border border-chart-1/30"
                             : "bg-destructive/10 text-destructive border border-destructive/30"
                         )}
                       >
-                        {selectedTc.errorMessage ||
-                          selectedTc.actualOutput ||
+                        {selectedTc?.errorMessage ||
+                          selectedTc?.actualOutput ||
                           "(no output)"}
                       </pre>
                     </div>
                   )}
 
-                  {selectedTc.status === "running" && (
+                  {selectedTc?.status === "running" && (
                     <div className="flex items-center gap-3 p-3 bg-chart-3/10 border border-chart-3/30 rounded-lg">
                       <Clock className="w-4 h-4 text-chart-3 animate-pulse" />
                       <span className="text-sm text-chart-3">
@@ -659,7 +675,7 @@ export default function DebugPage() {
             </div>
 
             {/* Score for this problem */}
-            {currentState.testCases.some(
+            {(currentState?.testCases ?? []).some(
               (tc) => tc.status !== "pending" && tc.status !== "running"
             ) && (
                 <div

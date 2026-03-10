@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { Users, Trophy, Activity, TrendingUp, Star, PlayCircle, StopCircle, Download, ShieldCheck } from "lucide-react";
 import { subscribeToUsers, type FSUser } from "@/react-app/lib/userService";
-import { subscribeToGameState, startGame, stopGame, sendBroadcast, setPassingGrades, type GameState } from "@/react-app/lib/gameState";
+import { subscribeToGameState, startGame, stopGame, sendBroadcast, setPassingGrades, setSEBRequired, type GameState } from "@/react-app/lib/gameState";
 import { toast } from "sonner";
 import { Megaphone } from "lucide-react";
 import { downloadSEBConfig } from "@/react-app/lib/sebDetection";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/react-app/lib/firebase";
+import { cn } from "@/react-app/lib/utils";
 
 function StatCard({ icon: Icon, label, value, sub, color }: { icon: React.ElementType; label: string; value: string | number; sub?: string; color: string }) {
     return (
@@ -81,6 +82,7 @@ export default function AdminDashboard() {
     const [broadcastSending, setBroadcastSending] = useState(false);
     const [passGrades, setPassGrades] = useState({ 1: 50, 2: 50, 3: 50 });
     const [savingGrades, setSavingGrades] = useState(false);
+    const [sebToggling, setSebToggling] = useState(false);
 
     // Real-time users from Firestore
     useEffect(() => {
@@ -160,6 +162,19 @@ export default function AdminDashboard() {
         }
     };
 
+    const handleToggleSEB = async () => {
+        setSebToggling(true);
+        try {
+            const next = !gameState.sebRequired;
+            await setSEBRequired(next);
+            toast.success(`SEB Enforcement ${next ? "ENABLED" : "DISABLED"}`);
+        } catch {
+            toast.error("Failed to toggle SEB requirement.");
+        } finally {
+            setSebToggling(false);
+        }
+    };
+
     const totalUsers = users.length;
     const activeSessions = users.filter(u => u.status === "active").length;
     const avgScore = users.length ? Math.round(users.reduce((s, u) => s + u.score, 0) / users.length) : 0;
@@ -205,38 +220,62 @@ export default function AdminDashboard() {
                     </button>
                 </div>
                 {sebOpen && (
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
                             <div>
-                                <label className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">
-                                    Entry Password <span className="normal-case text-white/20">(to start exam)</span>
-                                </label>
-                                <input type="text" value={entryPw} onChange={e => setEntryPw(e.target.value)}
-                                    placeholder="Leave empty for no password"
-                                    className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/20 focus:outline-none focus:border-blue-500/50 transition-all" />
+                                <p className="text-white text-sm font-semibold">Enforce SEB Requirement</p>
+                                <p className="text-white/30 text-xs mt-0.5">If disabled, participants can use any browser to take the exam.</p>
                             </div>
-                            <div>
-                                <label className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">
-                                    Quit Password <span className="normal-case text-white/20">(to exit SEB)</span>
-                                </label>
-                                <input type="text" value={quitPw} onChange={e => setQuitPw(e.target.value)}
-                                    placeholder="Leave empty to block quitting"
-                                    className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/20 focus:outline-none focus:border-blue-500/50 transition-all" />
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <button onClick={async () => {
-                                setSebSaving(true);
-                                try {
-                                    await setDoc(doc(db, "config", "sebSettings"), { entryPassword: entryPw, quitPassword: quitPw });
-                                    toast.success("SEB passwords saved to Firebase.");
-                                } catch { toast.error("Failed to save."); }
-                                setSebSaving(false);
-                            }} disabled={sebSaving}
-                                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-all disabled:opacity-60">
-                                {sebSaving ? "Saving…" : "Save Passwords"}
+                            <button
+                                onClick={handleToggleSEB}
+                                disabled={sebToggling}
+                                aria-label="Toggle SEB enforcement"
+                                className={cn(
+                                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none",
+                                    gameState.sebRequired ? "bg-blue-600" : "bg-white/10"
+                                )}
+                            >
+                                <span
+                                    className={cn(
+                                        "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                                        gameState.sebRequired ? "translate-x-6" : "translate-x-1"
+                                    )}
+                                />
                             </button>
-                            <p className="text-xs text-white/20">Changes take effect instantly — no need to redistribute .seb files</p>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">
+                                        Entry Password <span className="normal-case text-white/20">(to start exam)</span>
+                                    </label>
+                                    <input type="text" value={entryPw} onChange={e => setEntryPw(e.target.value)}
+                                        placeholder="Leave empty for no password"
+                                        className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/20 focus:outline-none focus:border-blue-500/50 transition-all" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">
+                                        Quit Password <span className="normal-case text-white/20">(to exit SEB)</span>
+                                    </label>
+                                    <input type="text" value={quitPw} onChange={e => setQuitPw(e.target.value)}
+                                        placeholder="Leave empty to block quitting"
+                                        className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/20 focus:outline-none focus:border-blue-500/50 transition-all" />
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <button onClick={async () => {
+                                    setSebSaving(true);
+                                    try {
+                                        await setDoc(doc(db, "config", "sebSettings"), { entryPassword: entryPw, quitPassword: quitPw });
+                                        toast.success("SEB passwords saved to Firebase.");
+                                    } catch { toast.error("Failed to save."); }
+                                    setSebSaving(false);
+                                }} disabled={sebSaving}
+                                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-all disabled:opacity-60">
+                                    {sebSaving ? "Saving…" : "Save Passwords"}
+                                </button>
+                                <p className="text-xs text-white/20">Changes take effect instantly — no need to redistribute .seb files</p>
+                            </div>
                         </div>
                     </div>
                 )}

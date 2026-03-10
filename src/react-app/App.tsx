@@ -29,9 +29,19 @@ import { isInSEB } from "@/react-app/lib/sebDetection";
 
 // ── Guards ─────────────────────────────────────────────────────────────────
 
-/** Block access unless user is inside Safe Exam Browser */
+/** Block access unless user is inside Safe Exam Browser (if required) */
 function RequireSEB() {
-  if (!isInSEB()) return <SEBRequired />;
+  const [gameState, setGameState] = useState<any>(null);
+
+  useEffect(() => {
+    return subscribeToGameState(setGameState);
+  }, []);
+
+  if (gameState === null) return null; // Wait for state
+
+  if (gameState.sebRequired && !isInSEB()) {
+    return <SEBRequired />;
+  }
   return <Outlet />;
 }
 

@@ -12,7 +12,8 @@ export async function startGame(): Promise<void> {
             startedAt: new Date().toISOString(),
             activeRound: 1,
             broadcastMessage: "",
-            passingGrades: { 1: 50, 2: 50, 3: 50 }
+            passingGrades: { 1: 50, 2: 50, 3: 50 },
+            sebRequired: true
         });
     } else {
         await updateDoc(GAME_DOC, { started: true, startedAt: new Date().toISOString() });
@@ -34,6 +35,11 @@ export async function setActiveRound(round: number): Promise<void> {
     await updateDoc(GAME_DOC, { activeRound: round });
 }
 
+/** Set whether SEB is required for all participants */
+export async function setSEBRequired(required: boolean): Promise<void> {
+    await updateDoc(GAME_DOC, { sebRequired: required });
+}
+
 /** Set passing grades for each round */
 export async function setPassingGrades(grades: Record<number, number>): Promise<void> {
     await updateDoc(GAME_DOC, { passingGrades: grades });
@@ -44,6 +50,7 @@ export interface GameState {
     broadcastMessage?: string;
     activeRound?: number;
     passingGrades?: Record<number, number>;
+    sebRequired?: boolean;
 }
 
 /** Subscribe to real-time game state — call returned function to unsubscribe */
@@ -54,7 +61,8 @@ export function subscribeToGameState(callback: (state: GameState) => void): () =
             started: d?.started ?? false,
             broadcastMessage: d?.broadcastMessage || "",
             activeRound: d?.activeRound ?? 1,
-            passingGrades: d?.passingGrades || { 1: 50, 2: 50, 3: 50 }
+            passingGrades: d?.passingGrades || { 1: 50, 2: 50, 3: 50 },
+            sebRequired: d?.sebRequired ?? true
         });
     });
 }
@@ -67,6 +75,7 @@ export async function getGameState(): Promise<GameState> {
         started: d?.started ?? false,
         broadcastMessage: d?.broadcastMessage || "",
         activeRound: d?.activeRound ?? 1,
-        passingGrades: d?.passingGrades || { 1: 50, 2: 50, 3: 50 }
+        passingGrades: d?.passingGrades || { 1: 50, 2: 50, 3: 50 },
+        sebRequired: d?.sebRequired ?? true
     };
 }
