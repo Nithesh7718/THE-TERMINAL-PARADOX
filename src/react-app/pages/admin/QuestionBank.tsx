@@ -326,9 +326,12 @@ function newQuizQuestion(id: number): QuizQuestion {
     return { id, question: "", options: ["", "", "", ""], correctAnswer: 0 };
 }
 function newDebugQuestion(id: number): DebugQuestion {
+    const blank = { python: "", javascript: "", java: "", c: "", cpp: "" };
     return {
         id, title: "New Debug Challenge", description: "", hint: "",
-        buggyCode: { python: "", javascript: "", java: "", c: "", cpp: "" },
+        inputVarNames: [],
+        inputPreamble: { ...blank },
+        buggyCode: { ...blank },
         testCases: [{ input: "", expectedOutput: "" }],
     };
 }

@@ -38,6 +38,34 @@ import { runCode } from "@/react-app/lib/judge0";
 
 const DEBUG_TIME_MINUTES = 15;
 
+// ── Variable injection helpers ────────────────────────────────────────
+/** Replace {0},{1},… in preamble template with space-split tokens from input */
+function fillPreamble(template: string, input: string): string {
+  const tokens = input.trim().split(/\s+/);
+  return template.replace(/\{(\d+)\}/g, (_, i) => tokens[parseInt(i, 10)] ?? "");
+}
+
+/**
+ * Build the code that actually gets sent to Judge0:
+ * • Python/JS: prepend filled preamble before user code
+ * • Java/C/C++: replace the /*INPUT*\/ marker inside the user code
+ */
+function buildCode(
+  question: DebugQuestion,
+  lang: string,
+  userCode: string,
+  tcInput: string
+): string {
+  const preamble = fillPreamble(
+    (question.inputPreamble as Record<string, string>)[lang] ?? "",
+    tcInput
+  );
+  if (userCode.includes("/*INPUT*/")) {
+    return userCode.replace("/*INPUT*/", preamble);
+  }
+  return preamble + "\n\n" + userCode;
+}
+
 type TCStatus = "pending" | "running" | "passed" | "failed" | "error";
 
 interface TestCaseState {
@@ -172,7 +200,8 @@ export default function DebugPage() {
     const results = await Promise.all(
       state.testCases.map(async (tc) => {
         try {
-          const result = await runCode(language, state.code, tc.input);
+          const codeToRun = buildCode(question, language, state.code, tc.input);
+          const result = await runCode(language, codeToRun, "");
           const passed =
             !result.isError &&
             result.output.trim().toLowerCase() === tc.expectedOutput.trim().toLowerCase();
@@ -483,6 +512,17 @@ export default function DebugPage() {
                   <p className="text-sm text-chart-3">{question.hint}</p>
                 </div>
               )}
+            </div>
+
+            {/* Variable values info strip */}
+            <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5 flex items-start gap-3">
+              <span className="text-xs font-semibold text-primary mt-0.5 shrink-0">Variables</span>
+              <code className="text-xs text-foreground/80 font-mono break-all">
+                {fillPreamble(
+                  (question.inputPreamble as Record<string, string>)[language ?? "python"] ?? "",
+                  currentState.testCases[selectedTestCase]?.input ?? ""
+                )}
+              </code>
             </div>
 
             {/* Code editor */}

@@ -1,5 +1,11 @@
-// Debug questions for Round 2
-// Buggy code reads from stdin so Judge0 can test with different inputs.
+// Debug questions for Round 2 — Variable Injection Model
+//
+// HOW IT WORKS:
+// • buggyCode uses named variables (no stdin) — users just fix the logic
+// • inputPreamble[lang] is filled per test case, with {0},{1}… replaced
+//   by the whitespace-split tokens from testCases[i].input
+// • Python/JS: preamble is prepended before the user's code
+// • Java/C/C++: preamble replaces the /*INPUT*/ marker inside the code
 
 import type { Language } from "@/react-app/components/LanguageSelector";
 
@@ -7,46 +13,53 @@ export interface DebugQuestion {
     id: number;
     title: string;
     description: string;
+    /** Short names shown in the UI above the editor, e.g. ["a","b"] */
+    inputVarNames: string[];
+    /** Per-language preamble template with {0},{1},… positional tokens */
+    inputPreamble: Record<Language, string>;
+    /**
+     * Python/JS: no stdin reading — use variables directly.
+     * Java/C/C++: include a /*INPUT*\/ comment where preamble is injected.
+     */
     buggyCode: Record<Language, string>;
-    testCases: {
-        input: string;    // actual stdin sent to Judge0
-        expectedOutput: string;
-    }[];
+    testCases: { input: string; expectedOutput: string }[];
     hint: string;
 }
 
-// ── Door 1 – Syntax Maze ──────────────────────────────────────────────
+// ── Door 1 – Syntax Maze ─────────────────────────────────────────────
 export const door1DebugQuestions: DebugQuestion[] = [
     {
         id: 1,
         title: "Fix the Sum Function",
         description:
-            "The function should return the sum of two numbers, but it has a bug. Find and fix it.",
+            "The function should return the sum of two numbers `a` and `b`, but it has a bug. Find and fix it.",
+        inputVarNames: ["a", "b"],
+        inputPreamble: {
+            python: "a, b = {0}, {1}",
+            javascript: "let a = {0}, b = {1};",
+            java: "int a = {0}, b = {1};",
+            c: "int a = {0}, b = {1};",
+            cpp: "int a = {0}, b = {1};",
+        },
         buggyCode: {
-            python: `a, b = map(int, input().split())
-
-def add_numbers(a, b):
+            python: `def add_numbers(a, b):
     result = a - b  # Bug here
     return result
 
 print(add_numbers(a, b))`,
-            javascript: `const [a, b] = require('fs').readFileSync('/dev/stdin','utf8').trim().split(' ').map(Number);
-
-function addNumbers(a, b) {
+            javascript: `function addNumbers(a, b) {
     let result = a - b;  // Bug here
     return result;
 }
 
 console.log(addNumbers(a, b));`,
-            java: `import java.util.Scanner;
-public class Solution {
+            java: `public class Main {
     public static int addNumbers(int a, int b) {
         int result = a - b;  // Bug here
         return result;
     }
     public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        int a = sc.nextInt(), b = sc.nextInt();
+        /*INPUT*/
         System.out.println(addNumbers(a, b));
     }
 }`,
@@ -56,9 +69,8 @@ int addNumbers(int a, int b) {
     return result;
 }
 int main() {
-    int a, b;
-    scanf("%d %d", &a, &b);
-    printf("%d\\n", addNumbers(a, b));
+    /*INPUT*/
+    printf("%d\n", addNumbers(a, b));
     return 0;
 }`,
             cpp: `#include <iostream>
@@ -68,8 +80,7 @@ int addNumbers(int a, int b) {
     return result;
 }
 int main() {
-    int a, b;
-    cin >> a >> b;
+    /*INPUT*/
     cout << addNumbers(a, b) << endl;
     return 0;
 }`,
@@ -79,122 +90,110 @@ int main() {
             { input: "10 20", expectedOutput: "30" },
             { input: "-5 5", expectedOutput: "0" },
         ],
-        hint: "Check the arithmetic operator being used.",
+        hint: "Check the arithmetic operator being used in add_numbers.",
     },
     {
         id: 2,
-        title: "Fix the Array Maximum",
+        title: "Fix the Factorial",
         description:
-            "This function should find the maximum value in an array, but it returns the wrong result for negative numbers.",
+            "This recursive factorial function has a wrong base case. Fix it so factorial(0) returns the correct value.",
+        inputVarNames: ["n"],
+        inputPreamble: {
+            python: "n = {0}",
+            javascript: "let n = {0};",
+            java: "int n = {0};",
+            c: "int n = {0};",
+            cpp: "int n = {0};",
+        },
         buggyCode: {
-            python: `n = int(input())
-arr = list(map(int, input().split()))
+            python: `def factorial(n):
+    if n == 0:
+        return 0  # Bug: wrong base case
+    return n * factorial(n - 1)
 
-def find_max(arr):
-    max_val = 0  # Bug: should initialize differently
-    for num in arr:
-        if num > max_val:
-            max_val = num
-    return max_val
-
-print(find_max(arr))`,
-            javascript: `const lines = require('fs').readFileSync('/dev/stdin','utf8').trim().split('\\n');
-const n = parseInt(lines[0]);
-const arr = lines[1].split(' ').map(Number);
-
-function findMax(arr) {
-    let maxVal = 0;  // Bug: should initialize differently
-    for (let num of arr) {
-        if (num > maxVal) maxVal = num;
+print(factorial(n))`,
+            javascript: `function factorial(n) {
+    if (n === 0) {
+        return 0;  // Bug: wrong base case
     }
-    return maxVal;
+    return n * factorial(n - 1);
 }
 
-console.log(findMax(arr));`,
-            java: `import java.util.*;
-public class Solution {
-    public static int findMax(int[] arr) {
-        int maxVal = 0;  // Bug: should initialize differently
-        for (int num : arr) {
-            if (num > maxVal) maxVal = num;
+console.log(factorial(n));`,
+            java: `public class Main {
+    public static int factorial(int n) {
+        if (n == 0) {
+            return 0;  // Bug: wrong base case
         }
-        return maxVal;
+        return n * factorial(n - 1);
     }
     public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        int n = sc.nextInt();
-        int[] arr = new int[n];
-        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();
-        System.out.println(findMax(arr));
+        /*INPUT*/
+        System.out.println(factorial(n));
     }
 }`,
             c: `#include <stdio.h>
-int findMax(int arr[], int size) {
-    int maxVal = 0;  // Bug: should initialize differently
-    for (int i = 0; i < size; i++) {
-        if (arr[i] > maxVal) maxVal = arr[i];
+int factorial(int n) {
+    if (n == 0) {
+        return 0;  // Bug: wrong base case
     }
-    return maxVal;
+    return n * factorial(n - 1);
 }
 int main() {
-    int n; scanf("%d", &n);
-    int arr[100];
-    for (int i = 0; i < n; i++) scanf("%d", &arr[i]);
-    printf("%d\\n", findMax(arr, n));
+    /*INPUT*/
+    printf("%d\n", factorial(n));
     return 0;
 }`,
             cpp: `#include <iostream>
-#include <vector>
 using namespace std;
-int findMax(vector<int>& arr) {
-    int maxVal = 0;  // Bug: should initialize differently
-    for (int num : arr) {
-        if (num > maxVal) maxVal = num;
+int factorial(int n) {
+    if (n == 0) {
+        return 0;  // Bug: wrong base case
     }
-    return maxVal;
+    return n * factorial(n - 1);
 }
 int main() {
-    int n; cin >> n;
-    vector<int> arr(n);
-    for (int i = 0; i < n; i++) cin >> arr[i];
-    cout << findMax(arr) << endl;
+    /*INPUT*/
+    cout << factorial(n) << endl;
     return 0;
 }`,
         },
         testCases: [
-            { input: "5\n3 7 2 9 1", expectedOutput: "9" },
-            { input: "4\n-5 -2 -8 -1", expectedOutput: "-1" },
-            { input: "1\n100", expectedOutput: "100" },
+            { input: "5", expectedOutput: "120" },
+            { input: "0", expectedOutput: "1" },
+            { input: "3", expectedOutput: "6" },
         ],
-        hint: "What happens when all numbers are negative?",
+        hint: "What should factorial(0) return so the multiplication chain works?",
     },
     {
         id: 3,
         title: "Fix the Loop Counter",
         description:
-            "This code should print numbers from 1 to N (inclusive), but it has an off-by-one error.",
+            "This code should print all numbers from 1 to n (inclusive), but the loop has an off-by-one error.",
+        inputVarNames: ["n"],
+        inputPreamble: {
+            python: "n = {0}",
+            javascript: "let n = {0};",
+            java: "int n = {0};",
+            c: "int n = {0};",
+            cpp: "int n = {0};",
+        },
         buggyCode: {
-            python: `n = int(input())
-
-def print_numbers(n):
+            python: `def print_numbers(n):
     for i in range(1, n):  # Bug: wrong range
         print(i)
 
 print_numbers(n)`,
-            javascript: `const n = parseInt(require('fs').readFileSync('/dev/stdin','utf8').trim());
-
-function printNumbers(n) {
+            javascript: `function printNumbers(n) {
     for (let i = 1; i < n; i++) {  // Bug: wrong condition
         console.log(i);
     }
 }
 
 printNumbers(n);`,
-            java: `import java.util.Scanner;
-public class Solution {
+            java: `public class Main {
     public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        int n = sc.nextInt();
+        /*INPUT*/
         for (int i = 1; i < n; i++) {  // Bug: wrong condition
             System.out.println(i);
         }
@@ -202,16 +201,16 @@ public class Solution {
 }`,
             c: `#include <stdio.h>
 int main() {
-    int n; scanf("%d", &n);
+    /*INPUT*/
     for (int i = 1; i < n; i++) {  // Bug: wrong condition
-        printf("%d\\n", i);
+        printf("%d\n", i);
     }
     return 0;
 }`,
             cpp: `#include <iostream>
 using namespace std;
 int main() {
-    int n; cin >> n;
+    /*INPUT*/
     for (int i = 1; i < n; i++) {  // Bug: wrong condition
         cout << i << endl;
     }
@@ -223,26 +222,30 @@ int main() {
             { input: "3", expectedOutput: "1\n2\n3" },
             { input: "1", expectedOutput: "1" },
         ],
-        hint: "Check the loop boundary condition — should it use < or <=?",
+        hint: "Should the loop stop before n, or include n? Check < vs <=.",
     },
     {
         id: 4,
         title: "Fix String Reversal",
         description:
-            "This function should reverse a string, but it's not working correctly.",
+            "This function should reverse a string `s`, but the loop runs in the wrong direction.",
+        inputVarNames: ["s"],
+        inputPreamble: {
+            python: `s = "{0}"`,
+            javascript: `let s = "{0}";`,
+            java: `String s = "{0}";`,
+            c: `char s[] = "{0}";`,
+            cpp: `string s = "{0}";`,
+        },
         buggyCode: {
-            python: `s = input()
-
-def reverse_string(s):
+            python: `def reverse_string(s):
     reversed_str = ""
     for i in range(len(s)):  # Bug: wrong iteration direction
         reversed_str += s[i]
     return reversed_str
 
 print(reverse_string(s))`,
-            javascript: `const s = require('fs').readFileSync('/dev/stdin','utf8').trim();
-
-function reverseString(s) {
+            javascript: `function reverseString(s) {
     let reversed = "";
     for (let i = 0; i < s.length; i++) {  // Bug: wrong direction
         reversed += s[i];
@@ -251,8 +254,7 @@ function reverseString(s) {
 }
 
 console.log(reverseString(s));`,
-            java: `import java.util.Scanner;
-public class Solution {
+            java: `public class Main {
     public static String reverseString(String s) {
         StringBuilder reversed = new StringBuilder();
         for (int i = 0; i < s.length(); i++) {  // Bug: wrong direction
@@ -261,28 +263,28 @@ public class Solution {
         return reversed.toString();
     }
     public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        System.out.println(reverseString(sc.nextLine()));
+        /*INPUT*/
+        System.out.println(reverseString(s));
     }
 }`,
             c: `#include <stdio.h>
 #include <string.h>
 int main() {
-    char s[100], result[100];
-    scanf("%s", s);
+    /*INPUT*/
     int len = strlen(s);
+    char result[100];
     for (int i = 0; i < len; i++) {  // Bug: wrong direction
         result[i] = s[i];
     }
-    result[len] = '\\0';
-    printf("%s\\n", result);
+    result[len] = '\0';
+    printf("%s\n", result);
     return 0;
 }`,
             cpp: `#include <iostream>
 #include <string>
 using namespace std;
 int main() {
-    string s; cin >> s;
+    /*INPUT*/
     string reversed = "";
     for (int i = 0; i < (int)s.length(); i++) {  // Bug: wrong direction
         reversed += s[i];
@@ -296,77 +298,89 @@ int main() {
             { input: "world", expectedOutput: "dlrow" },
             { input: "a", expectedOutput: "a" },
         ],
-        hint: "Iterate from the end of the string to the beginning.",
+        hint: "To reverse, iterate from the last character down to the first.",
     },
     {
         id: 5,
-        title: "Fix the Factorial",
+        title: "Fix the Array Maximum",
         description:
-            "This recursive factorial function has a bug that causes incorrect results.",
+            "find_max should return the maximum of `a`, `b`, and `c`. It gives wrong answers when all values are negative.",
+        inputVarNames: ["a", "b", "c"],
+        inputPreamble: {
+            python: "a, b, c = {0}, {1}, {2}",
+            javascript: "let a = {0}, b = {1}, c = {2};",
+            java: "int a = {0}, b = {1}, c = {2};",
+            c: "int a = {0}, b = {1}, c = {2};",
+            cpp: "int a = {0}, b = {1}, c = {2};",
+        },
         buggyCode: {
-            python: `n = int(input())
+            python: `def find_max(a, b, c):
+    max_val = 0  # Bug: wrong initial value
+    if a > max_val:
+        max_val = a
+    if b > max_val:
+        max_val = b
+    if c > max_val:
+        max_val = c
+    return max_val
 
-def factorial(n):
-    if n == 0:
-        return 0  # Bug: wrong base case
-    return n * factorial(n - 1)
-
-print(factorial(n))`,
-            javascript: `const n = parseInt(require('fs').readFileSync('/dev/stdin','utf8').trim());
-
-function factorial(n) {
-    if (n === 0) {
-        return 0;  // Bug: wrong base case
-    }
-    return n * factorial(n - 1);
+print(find_max(a, b, c))`,
+            javascript: `function findMax(a, b, c) {
+    let maxVal = 0;  // Bug: wrong initial value
+    if (a > maxVal) maxVal = a;
+    if (b > maxVal) maxVal = b;
+    if (c > maxVal) maxVal = c;
+    return maxVal;
 }
 
-console.log(factorial(n));`,
-            java: `import java.util.Scanner;
-public class Solution {
-    public static int factorial(int n) {
-        if (n == 0) {
-            return 0;  // Bug: wrong base case
-        }
-        return n * factorial(n - 1);
+console.log(findMax(a, b, c));`,
+            java: `public class Main {
+    public static int findMax(int a, int b, int c) {
+        int maxVal = 0;  // Bug: wrong initial value
+        if (a > maxVal) maxVal = a;
+        if (b > maxVal) maxVal = b;
+        if (c > maxVal) maxVal = c;
+        return maxVal;
     }
     public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        System.out.println(factorial(sc.nextInt()));
+        /*INPUT*/
+        System.out.println(findMax(a, b, c));
     }
 }`,
             c: `#include <stdio.h>
-int factorial(int n) {
-    if (n == 0) {
-        return 0;  // Bug: wrong base case
-    }
-    return n * factorial(n - 1);
+int findMax(int a, int b, int c) {
+    int maxVal = 0;  // Bug: wrong initial value
+    if (a > maxVal) maxVal = a;
+    if (b > maxVal) maxVal = b;
+    if (c > maxVal) maxVal = c;
+    return maxVal;
 }
 int main() {
-    int n; scanf("%d", &n);
-    printf("%d\\n", factorial(n));
+    /*INPUT*/
+    printf("%d\n", findMax(a, b, c));
     return 0;
 }`,
             cpp: `#include <iostream>
 using namespace std;
-int factorial(int n) {
-    if (n == 0) {
-        return 0;  // Bug: wrong base case
-    }
-    return n * factorial(n - 1);
+int findMax(int a, int b, int c) {
+    int maxVal = 0;  // Bug: wrong initial value
+    if (a > maxVal) maxVal = a;
+    if (b > maxVal) maxVal = b;
+    if (c > maxVal) maxVal = c;
+    return maxVal;
 }
 int main() {
-    int n; cin >> n;
-    cout << factorial(n) << endl;
+    /*INPUT*/
+    cout << findMax(a, b, c) << endl;
     return 0;
 }`,
         },
         testCases: [
-            { input: "5", expectedOutput: "120" },
-            { input: "0", expectedOutput: "1" },
-            { input: "3", expectedOutput: "6" },
+            { input: "3 7 2", expectedOutput: "7" },
+            { input: "-5 -2 -8", expectedOutput: "-2" },
+            { input: "0 0 0", expectedOutput: "0" },
         ],
-        hint: "What should factorial(0) return to make multiplication work?",
+        hint: "What happens when all inputs are negative and max_val starts at 0?",
     },
 ];
 
@@ -376,29 +390,32 @@ export const door2DebugQuestions: DebugQuestion[] = [
         id: 1,
         title: "Fix the Even/Odd Checker",
         description:
-            "This function should print 'true' if a number is even, but the logic is backwards.",
+            "isEven(n) should return 'true' if n is even, but the comparison operator is wrong.",
+        inputVarNames: ["n"],
+        inputPreamble: {
+            python: "n = {0}",
+            javascript: "let n = {0};",
+            java: "int n = {0};",
+            c: "int n = {0};",
+            cpp: "int n = {0};",
+        },
         buggyCode: {
-            python: `n = int(input())
-
-def is_even(n):
+            python: `def is_even(n):
     return n % 2 == 1  # Bug: wrong comparison
 
 print(str(is_even(n)).lower())`,
-            javascript: `const n = parseInt(require('fs').readFileSync('/dev/stdin','utf8').trim());
-
-function isEven(n) {
+            javascript: `function isEven(n) {
     return n % 2 === 1;  // Bug: wrong comparison
 }
 
-console.log(isEven(n));`,
-            java: `import java.util.Scanner;
-public class Solution {
+console.log(String(isEven(n)));`,
+            java: `public class Main {
     public static boolean isEven(int n) {
         return n % 2 == 1;  // Bug: wrong comparison
     }
     public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        System.out.println(isEven(sc.nextInt()));
+        /*INPUT*/
+        System.out.println(isEven(n));
     }
 }`,
             c: `#include <stdio.h>
@@ -406,8 +423,8 @@ int isEven(int n) {
     return n % 2 == 1;  // Bug: wrong comparison
 }
 int main() {
-    int n; scanf("%d", &n);
-    printf("%s\\n", isEven(n) ? "true" : "false");
+    /*INPUT*/
+    printf("%s\n", isEven(n) ? "true" : "false");
     return 0;
 }`,
             cpp: `#include <iostream>
@@ -416,7 +433,7 @@ bool isEven(int n) {
     return n % 2 == 1;  // Bug: wrong comparison
 }
 int main() {
-    int n; cin >> n;
+    /*INPUT*/
     cout << boolalpha << isEven(n) << endl;
     return 0;
 }`,
@@ -430,107 +447,26 @@ int main() {
     },
     {
         id: 2,
-        title: "Fix the Array Sum",
-        description:
-            "This function calculates the sum of an array but skips elements due to a wrong loop step.",
-        buggyCode: {
-            python: `n = int(input())
-arr = list(map(int, input().split()))
-
-def array_sum(arr):
-    total = 0
-    for i in range(0, len(arr), 2):  # Bug: wrong step
-        total += arr[i]
-    return total
-
-print(array_sum(arr))`,
-            javascript: `const lines = require('fs').readFileSync('/dev/stdin','utf8').trim().split('\\n');
-const arr = lines[1].split(' ').map(Number);
-
-function arraySum(arr) {
-    let total = 0;
-    for (let i = 0; i < arr.length; i += 2) {  // Bug: wrong step
-        total += arr[i];
-    }
-    return total;
-}
-
-console.log(arraySum(arr));`,
-            java: `import java.util.*;
-public class Solution {
-    public static int arraySum(int[] arr) {
-        int total = 0;
-        for (int i = 0; i < arr.length; i += 2) {  // Bug: wrong step
-            total += arr[i];
-        }
-        return total;
-    }
-    public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        int n = sc.nextInt();
-        int[] arr = new int[n];
-        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();
-        System.out.println(arraySum(arr));
-    }
-}`,
-            c: `#include <stdio.h>
-int arraySum(int arr[], int size) {
-    int total = 0;
-    for (int i = 0; i < size; i += 2) {  // Bug: wrong step
-        total += arr[i];
-    }
-    return total;
-}
-int main() {
-    int n; scanf("%d", &n);
-    int arr[100];
-    for (int i = 0; i < n; i++) scanf("%d", &arr[i]);
-    printf("%d\\n", arraySum(arr, n));
-    return 0;
-}`,
-            cpp: `#include <iostream>
-#include <vector>
-using namespace std;
-int arraySum(vector<int>& arr) {
-    int total = 0;
-    for (int i = 0; i < (int)arr.size(); i += 2) {  // Bug: wrong step
-        total += arr[i];
-    }
-    return total;
-}
-int main() {
-    int n; cin >> n;
-    vector<int> arr(n);
-    for (int i = 0; i < n; i++) cin >> arr[i];
-    cout << arraySum(arr) << endl;
-    return 0;
-}`,
-        },
-        testCases: [
-            { input: "5\n1 2 3 4 5", expectedOutput: "15" },
-            { input: "3\n10 20 30", expectedOutput: "60" },
-            { input: "1\n5", expectedOutput: "5" },
-        ],
-        hint: "Check the loop increment step — it should visit every element, not alternate ones.",
-    },
-    {
-        id: 3,
         title: "Fix the Power Function",
         description:
-            "This function should calculate base^exponent but gives wrong results due to an incorrect initial value.",
+            "power(base, exp) should calculate base^exp but always returns 0. The initial value is wrong.",
+        inputVarNames: ["base", "exp"],
+        inputPreamble: {
+            python: "base, exp = {0}, {1}",
+            javascript: "let base = {0}, exp = {1};",
+            java: "int base = {0}, exp = {1};",
+            c: "int base = {0}, exp = {1};",
+            cpp: "int base = {0}, exp = {1};",
+        },
         buggyCode: {
-            python: `base, exp = map(int, input().split())
-
-def power(base, exp):
+            python: `def power(base, exp):
     result = 0  # Bug: wrong initial value
     for _ in range(exp):
         result *= base
     return result
 
 print(power(base, exp))`,
-            javascript: `const [base, exp] = require('fs').readFileSync('/dev/stdin','utf8').trim().split(' ').map(Number);
-
-function power(base, exp) {
+            javascript: `function power(base, exp) {
     let result = 0;  // Bug: wrong initial value
     for (let i = 0; i < exp; i++) {
         result *= base;
@@ -539,8 +475,7 @@ function power(base, exp) {
 }
 
 console.log(power(base, exp));`,
-            java: `import java.util.Scanner;
-public class Solution {
+            java: `public class Main {
     public static int power(int base, int exp) {
         int result = 0;  // Bug: wrong initial value
         for (int i = 0; i < exp; i++) {
@@ -549,8 +484,8 @@ public class Solution {
         return result;
     }
     public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        System.out.println(power(sc.nextInt(), sc.nextInt()));
+        /*INPUT*/
+        System.out.println(power(base, exp));
     }
 }`,
             c: `#include <stdio.h>
@@ -562,9 +497,8 @@ int power(int base, int exp) {
     return result;
 }
 int main() {
-    int base, exp;
-    scanf("%d %d", &base, &exp);
-    printf("%d\\n", power(base, exp));
+    /*INPUT*/
+    printf("%d\n", power(base, exp));
     return 0;
 }`,
             cpp: `#include <iostream>
@@ -577,7 +511,7 @@ int power(int base, int exp) {
     return result;
 }
 int main() {
-    int base, exp; cin >> base >> exp;
+    /*INPUT*/
     cout << power(base, exp) << endl;
     return 0;
 }`,
@@ -587,17 +521,23 @@ int main() {
             { input: "5 2", expectedOutput: "25" },
             { input: "3 0", expectedOutput: "1" },
         ],
-        hint: "What should the initial value be for multiplication to work correctly?",
+        hint: "What should result start at so multiplication builds up correctly?",
     },
     {
-        id: 4,
+        id: 3,
         title: "Fix the Palindrome Checker",
         description:
-            "This function should check if a string is a palindrome and print true/false.",
+            "isPalindrome(s) should return 'true' if s reads the same forwards and backwards. There's an off-by-one in the right pointer.",
+        inputVarNames: ["s"],
+        inputPreamble: {
+            python: `s = "{0}"`,
+            javascript: `let s = "{0}";`,
+            java: `String s = "{0}";`,
+            c: `char s[] = "{0}";`,
+            cpp: `string s = "{0}";`,
+        },
         buggyCode: {
-            python: `s = input()
-
-def is_palindrome(s):
+            python: `def is_palindrome(s):
     left = 0
     right = len(s)  # Bug: off by one
     while left < right:
@@ -608,9 +548,7 @@ def is_palindrome(s):
     return True
 
 print(str(is_palindrome(s)).lower())`,
-            javascript: `const s = require('fs').readFileSync('/dev/stdin','utf8').trim();
-
-function isPalindrome(s) {
+            javascript: `function isPalindrome(s) {
     let left = 0, right = s.length;  // Bug: off by one
     while (left < right) {
         if (s[left] !== s[right]) return false;
@@ -619,9 +557,8 @@ function isPalindrome(s) {
     return true;
 }
 
-console.log(isPalindrome(s));`,
-            java: `import java.util.Scanner;
-public class Solution {
+console.log(String(isPalindrome(s)));`,
+            java: `public class Main {
     public static boolean isPalindrome(String s) {
         int left = 0, right = s.length();  // Bug: off by one
         while (left < right) {
@@ -631,8 +568,8 @@ public class Solution {
         return true;
     }
     public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        System.out.println(isPalindrome(sc.nextLine()));
+        /*INPUT*/
+        System.out.println(isPalindrome(s));
     }
 }`,
             c: `#include <stdio.h>
@@ -646,8 +583,8 @@ int isPalindrome(char* s) {
     return 1;
 }
 int main() {
-    char s[100]; scanf("%s", s);
-    printf("%s\\n", isPalindrome(s) ? "true" : "false");
+    /*INPUT*/
+    printf("%s\n", isPalindrome(s) ? "true" : "false");
     return 0;
 }`,
             cpp: `#include <iostream>
@@ -662,7 +599,7 @@ bool isPalindrome(string s) {
     return true;
 }
 int main() {
-    string s; cin >> s;
+    /*INPUT*/
     cout << boolalpha << isPalindrome(s) << endl;
     return 0;
 }`,
@@ -672,19 +609,101 @@ int main() {
             { input: "hello", expectedOutput: "false" },
             { input: "a", expectedOutput: "true" },
         ],
-        hint: "Array indices are 0-based — what is the index of the last character?",
+        hint: "Indices are 0-based — the last valid index is length-1, not length.",
+    },
+    {
+        id: 4,
+        title: "Fix the Array Sum (Step Bug)",
+        description:
+            "arraySum should add every element but only adds every other one due to a wrong loop step.",
+        inputVarNames: ["a", "b", "c", "d", "e"],
+        inputPreamble: {
+            python: "arr = [{0}, {1}, {2}, {3}, {4}]",
+            javascript: "let arr = [{0}, {1}, {2}, {3}, {4}];",
+            java: "int[] arr = {{0}, {1}, {2}, {3}, {4}};",
+            c: "int arr[] = {{0}, {1}, {2}, {3}, {4}}; int n = 5;",
+            cpp: "int arr[] = {{0}, {1}, {2}, {3}, {4}}; int n = 5;",
+        },
+        buggyCode: {
+            python: `def array_sum(arr):
+    total = 0
+    for i in range(0, len(arr), 2):  # Bug: wrong step
+        total += arr[i]
+    return total
+
+print(array_sum(arr))`,
+            javascript: `function arraySum(arr) {
+    let total = 0;
+    for (let i = 0; i < arr.length; i += 2) {  // Bug: wrong step
+        total += arr[i];
+    }
+    return total;
+}
+
+console.log(arraySum(arr));`,
+            java: `public class Main {
+    public static int arraySum(int[] arr) {
+        int total = 0;
+        for (int i = 0; i < arr.length; i += 2) {  // Bug: wrong step
+            total += arr[i];
+        }
+        return total;
+    }
+    public static void main(String[] args) {
+        /*INPUT*/
+        System.out.println(arraySum(arr));
+    }
+}`,
+            c: `#include <stdio.h>
+int arraySum(int arr[], int size) {
+    int total = 0;
+    for (int i = 0; i < size; i += 2) {  // Bug: wrong step
+        total += arr[i];
+    }
+    return total;
+}
+int main() {
+    /*INPUT*/
+    printf("%d\n", arraySum(arr, n));
+    return 0;
+}`,
+            cpp: `#include <iostream>
+using namespace std;
+int arraySum(int arr[], int size) {
+    int total = 0;
+    for (int i = 0; i < size; i += 2) {  // Bug: wrong step
+        total += arr[i];
+    }
+    return total;
+}
+int main() {
+    /*INPUT*/
+    cout << arraySum(arr, n) << endl;
+    return 0;
+}`,
+        },
+        testCases: [
+            { input: "1 2 3 4 5", expectedOutput: "15" },
+            { input: "10 20 30 40 50", expectedOutput: "150" },
+            { input: "0 0 0 0 0", expectedOutput: "0" },
+        ],
+        hint: "The loop step should visit every element — change the increment.",
     },
     {
         id: 5,
-        title: "Fix the Count Occurrences",
+        title: "Fix Count Occurrences",
         description:
-            "This function should count how many times a value appears in an array, but it stops too early.",
+            "countOccurrences should count ALL times `target` appears in the array, but it stops after the first match.",
+        inputVarNames: ["a", "b", "c", "d", "e", "target"],
+        inputPreamble: {
+            python: "arr = [{0}, {1}, {2}, {3}, {4}]\ntarget = {5}",
+            javascript: "let arr = [{0}, {1}, {2}, {3}, {4}];\nlet target = {5};",
+            java: "int[] arr = {{0}, {1}, {2}, {3}, {4}};\nint target = {5};",
+            c: "int arr[] = {{0}, {1}, {2}, {3}, {4}}; int n = 5; int target = {5};",
+            cpp: "int arr[] = {{0}, {1}, {2}, {3}, {4}}; int n = 5; int target = {5};",
+        },
         buggyCode: {
-            python: `n = int(input())
-arr = list(map(int, input().split()))
-target = int(input())
-
-def count_occurrences(arr, target):
+            python: `def count_occurrences(arr, target):
     count = 0
     for num in arr:
         if num == target:
@@ -693,11 +712,7 @@ def count_occurrences(arr, target):
     return count
 
 print(count_occurrences(arr, target))`,
-            javascript: `const lines = require('fs').readFileSync('/dev/stdin','utf8').trim().split('\\n');
-const arr = lines[1].split(' ').map(Number);
-const target = parseInt(lines[2]);
-
-function countOccurrences(arr, target) {
+            javascript: `function countOccurrences(arr, target) {
     let count = 0;
     for (let num of arr) {
         if (num === target) {
@@ -709,8 +724,7 @@ function countOccurrences(arr, target) {
 }
 
 console.log(countOccurrences(arr, target));`,
-            java: `import java.util.*;
-public class Solution {
+            java: `public class Main {
     public static int countOccurrences(int[] arr, int target) {
         int count = 0;
         for (int num : arr) {
@@ -722,11 +736,7 @@ public class Solution {
         return count;
     }
     public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        int n = sc.nextInt();
-        int[] arr = new int[n];
-        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();
-        int target = sc.nextInt();
+        /*INPUT*/
         System.out.println(countOccurrences(arr, target));
     }
 }`,
@@ -742,20 +752,16 @@ int countOccurrences(int arr[], int size, int target) {
     return count;
 }
 int main() {
-    int n; scanf("%d", &n);
-    int arr[100], target;
-    for (int i = 0; i < n; i++) scanf("%d", &arr[i]);
-    scanf("%d", &target);
-    printf("%d\\n", countOccurrences(arr, n, target));
+    /*INPUT*/
+    printf("%d\n", countOccurrences(arr, n, target));
     return 0;
 }`,
             cpp: `#include <iostream>
-#include <vector>
 using namespace std;
-int countOccurrences(vector<int>& arr, int target) {
+int countOccurrences(int arr[], int size, int target) {
     int count = 0;
-    for (int num : arr) {
-        if (num == target) {
+    for (int i = 0; i < size; i++) {
+        if (arr[i] == target) {
             count++;
             break;  // Bug: shouldn't break
         }
@@ -763,25 +769,22 @@ int countOccurrences(vector<int>& arr, int target) {
     return count;
 }
 int main() {
-    int n; cin >> n;
-    vector<int> arr(n);
-    for (int i = 0; i < n; i++) cin >> arr[i];
-    int target; cin >> target;
-    cout << countOccurrences(arr, target) << endl;
+    /*INPUT*/
+    cout << countOccurrences(arr, n, target) << endl;
     return 0;
 }`,
         },
         testCases: [
-            { input: "6\n1 2 2 3 2 4\n2", expectedOutput: "3" },
-            { input: "4\n1 1 1 1\n1", expectedOutput: "4" },
-            { input: "3\n1 2 3\n5", expectedOutput: "0" },
+            { input: "1 2 2 3 2 2", expectedOutput: "3" },
+            { input: "1 1 1 1 1 1", expectedOutput: "5" },
+            { input: "1 2 3 4 5 9", expectedOutput: "0" },
         ],
-        hint: "Should the loop stop after finding the first match? What happens if we remove break?",
+        hint: "Remove the statement that exits the loop after the first match.",
     },
 ];
 
-// Door 3 - Runtime Rush (re-uses Door 1 set)
-export const door3DebugQuestions: DebugQuestion[] = door1DebugQuestions.map((q, i) => ({
+// ── Door 3 – Runtime Rush (reuses Door 2) ────────────────────────────
+export const door3DebugQuestions: DebugQuestion[] = door2DebugQuestions.map((q, i) => ({
     ...q,
     id: i + 1,
     title: `Challenge ${i + 1}: ${q.title}`,
