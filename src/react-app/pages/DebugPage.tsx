@@ -152,7 +152,7 @@ export default function DebugPage() {
     if (!language) return;
     setQuestionStates(
       questions.map((q) => ({
-        code: q.buggyCode[language],
+        code: q.buggyCode[language] || "",
         testCases: q.testCases.map((tc) => ({
           input: tc.input,
           expectedOutput: tc.expectedOutput,
@@ -304,15 +304,18 @@ export default function DebugPage() {
   const currentState = questionStates[currentQuestion];
 
   // ── Loading ────────────────────────────────────────────────────────
-  if (!questionsLoaded || dbProgress === null)
+  if (!questionsLoaded || dbProgress === null || questions.length === 0)
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
-          <p className="text-white/30 text-sm">Loading challenges…</p>
+          <p className="text-white/30 text-sm">{questionsLoaded && questions.length === 0 ? "No challenges found." : "Loading challenges…"}</p>
         </div>
       </div>
     );
+
+  // Safety guard for rendering
+  if (!question || !currentState) return null;
 
   // ── Already completed ──────────────────────────────────────────────
   if (alreadyCompleted && !isSubmitted) {
@@ -520,7 +523,7 @@ export default function DebugPage() {
               <code className="text-xs text-foreground/80 font-mono break-all">
                 {fillPreamble(
                   (question.inputPreamble as Record<string, string>)[language ?? "python"] ?? "",
-                  currentState.testCases[selectedTestCase]?.input ?? ""
+                  currentState?.testCases[selectedTestCase]?.input ?? ""
                 )}
               </code>
             </div>
@@ -559,7 +562,7 @@ export default function DebugPage() {
             <div className="bg-card border border-border rounded-xl overflow-hidden">
               {/* Tabs */}
               <div className="flex border-b border-border overflow-x-auto">
-                {currentState.testCases.map((tc, idx) => (
+                {currentState?.testCases.map((tc, idx) => (
                   <button
                     key={idx}
                     aria-label={`Test case ${idx + 1}`}

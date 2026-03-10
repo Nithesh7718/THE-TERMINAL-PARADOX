@@ -240,14 +240,17 @@ export default function CodingPage() {
     const doorNames = ["Array Forge", "String Sanctum", "Graph Gateway"];
 
     // Loading guard
-    if (!questionsLoaded || dbProgress === null) return (
+    if (!questionsLoaded || dbProgress === null || questions.length === 0) return (
         <div className="min-h-screen bg-background flex items-center justify-center">
             <div className="flex flex-col items-center gap-3">
                 <div className="w-8 h-8 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin" />
-                <p className="text-white/30 text-sm">Loading problems…</p>
+                <p className="text-white/30 text-sm">{questionsLoaded && questions.length === 0 ? "No problems found." : "Loading problems…"}</p>
             </div>
         </div>
     );
+
+    // Safety guard
+    if (!question || !currentState) return null;
 
     // Re-attempt guard
     const alreadyCompleted = dbProgress >= 3;
