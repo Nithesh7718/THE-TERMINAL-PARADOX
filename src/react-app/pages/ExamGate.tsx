@@ -8,15 +8,18 @@ import { toast } from "sonner";
 const ENTRY_KEY = "examEntryVerified";
 
 /** Check if user already passed the entry gate this session */
+// eslint-disable-next-line react-refresh/only-export-components
 export function hasPassedEntryGate(): boolean {
     return sessionStorage.getItem(ENTRY_KEY) === "true";
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function clearEntryGate(): void {
     sessionStorage.removeItem(ENTRY_KEY);
 }
 
 /** Fetch exit password from Firestore (used by exit gate) */
+// eslint-disable-next-line react-refresh/only-export-components
 export async function getExitPassword(): Promise<string> {
     try {
         const snap = await getDoc(doc(db, "config", "sebSettings"));

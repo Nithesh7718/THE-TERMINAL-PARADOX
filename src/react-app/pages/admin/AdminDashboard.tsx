@@ -95,7 +95,7 @@ export default function AdminDashboard() {
         const unsub = subscribeToGameState((state) => {
             setGameState(state);
             if (state.passingGrades) {
-                setPassGrades(state.passingGrades as any);
+                setPassGrades(state.passingGrades as { 1: number; 2: number; 3: number });
             }
         });
         return unsub;

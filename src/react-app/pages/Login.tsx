@@ -13,6 +13,7 @@ export interface UserSession {
     role: "participant";
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function getUserSession(): UserSession | null {
     try {
         const raw = sessionStorage.getItem(SESSION_KEY);
@@ -20,6 +21,7 @@ export function getUserSession(): UserSession | null {
     } catch { return null; }
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function clearUserSession(): void {
     try {
         const session = getUserSession();
@@ -144,7 +146,7 @@ export default function Login() {
                             <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-1.5">
                                 {tab === "admin" ? "Username" : "Email"}
                             </label>
-                            <input type={tab === "admin" ? "text" : "email"} value={email} onChange={e => setEmail(e.target.value)}
+                            <input type={tab === "admin" ? "text" : "email"} id="email" name="email" value={email} onChange={e => setEmail(e.target.value)}
                                 placeholder={tab === "admin" ? "admin" : "you@example.com"} autoComplete="username"
                                 className="w-full px-4 py-3 rounded-xl bg-secondary/50 border border-border text-foreground placeholder-muted-foreground/40 text-sm focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all" />
                         </div>
@@ -152,7 +154,7 @@ export default function Login() {
                         <div>
                             <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-1.5">Password</label>
                             <div className="relative">
-                                <input type={showPw ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)}
+                                <input type={showPw ? "text" : "password"} id="password" name="password" value={password} onChange={e => setPassword(e.target.value)}
                                     placeholder="••••••••" autoComplete={mode === "login" ? "current-password" : "new-password"}
                                     className="w-full px-4 py-3 pr-12 rounded-xl bg-secondary/50 border border-border text-foreground placeholder-muted-foreground/40 text-sm focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all" />
                                 <button type="button" onClick={() => setShowPw(p => !p)} aria-label={showPw ? "Hide password" : "Show password"}

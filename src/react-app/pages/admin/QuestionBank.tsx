@@ -5,7 +5,7 @@ import {
     Save, RefreshCw, Database, AlertCircle, CheckCircle2, Pencil, ArrowUp, ArrowDown,
 } from "lucide-react";
 import {
-    getAllQuestionsForAdmin, saveQuestions, seedAllQuestionsIfEmpty, forceReseedAllQuestions,
+    getAllQuestionsForAdmin, saveQuestions, forceReseedAllQuestions,
     type QuizQuestion, type DebugQuestion, type CodingQuestion, type RoundType,
 } from "@/react-app/lib/questionService";
 

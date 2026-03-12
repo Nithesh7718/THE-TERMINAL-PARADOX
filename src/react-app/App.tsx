@@ -24,14 +24,14 @@ import QuestionBank from "@/react-app/pages/admin/QuestionBank";
 // Auth + state helpers
 import { getUserSession } from "@/react-app/pages/Login";
 import { getSession as getAdminSession } from "@/react-app/lib/adminAuth";
-import { subscribeToGameState } from "@/react-app/lib/gameState";
+import { subscribeToGameState, type GameState } from "@/react-app/lib/gameState";
 import { isInSEB } from "@/react-app/lib/sebDetection";
 
 // ── Guards ─────────────────────────────────────────────────────────────────
 
 /** Block access unless user is inside Safe Exam Browser (if required) */
 function RequireSEB() {
-  const [gameState, setGameState] = useState<any>(null);
+  const [gameState, setGameState] = useState<GameState | null>(null);
 
   useEffect(() => {
     return subscribeToGameState(setGameState);
@@ -48,7 +48,7 @@ function RequireSEB() {
 /** Requires participant session — syncs game state from Firestore */
 function RequireGameStarted() {
   const session = getUserSession();
-  const [gameState, setGameState] = useState<any>(null);
+  const [gameState, setGameState] = useState<GameState | null>(null);
 
   useEffect(() => {
     const unsub = subscribeToGameState(setGameState);

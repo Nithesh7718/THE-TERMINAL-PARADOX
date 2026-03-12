@@ -8,8 +8,7 @@
 
 export function isInSEB(): boolean {
   // Method 1: SEB JS API (most reliable)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((window as any).SafeExamBrowser) return true;
+  if ("SafeExamBrowser" in window && window.SafeExamBrowser) return true;
 
   // Method 2: User-Agent (broad match for all SEB versions)
   const ua = navigator.userAgent;

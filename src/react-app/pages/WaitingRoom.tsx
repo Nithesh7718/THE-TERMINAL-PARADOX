@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Terminal, Wifi, LogOut, Megaphone } from "lucide-react";
 import { getUserSession, clearUserSession } from "@/react-app/pages/Login";
-import { subscribeToGameState } from "@/react-app/lib/gameState";
+import { subscribeToGameState, type GameState } from "@/react-app/lib/gameState";
 import { markUserInactive } from "@/react-app/lib/userService";
 import { toast } from "sonner";
 
@@ -10,12 +10,12 @@ export default function WaitingRoom() {
     const navigate = useNavigate();
     const session = getUserSession();
     const [dots, setDots] = useState(".");
-    const [gameState, setGameState] = useState<any>(null);
+    const [gameState, setGameState] = useState<GameState | null>(null);
 
     // Redirect if not logged in
     useEffect(() => {
         if (!session) navigate("/login", { replace: true });
-    }, [session]);
+    }, [session, navigate]);
 
     // Animated dots
     useEffect(() => {
