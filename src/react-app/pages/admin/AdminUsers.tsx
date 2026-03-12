@@ -7,12 +7,6 @@ import {
     ChevronUp,
     ChevronDown,
 } from "lucide-react";
-import {
-    type QuizQuestion,
-    type DebugQuestion,
-    type CodingQuestion,
-    type RoundType,
-} from "@/react-app/lib/questionService";
 
 const ProgressBar = ({ percent }: { percent: number }) => {
     const ref = useRef<HTMLDivElement>(null);
@@ -280,89 +274,120 @@ export default function AdminUsers() {
                         <h3 className="text-white font-bold text-lg mb-5">
                             {editing ? "Edit User" : "Add New User"}
                         </h3>
-                        <div className="space-y-4">
-                            {(["name", "email", "password"] as const).map((f) => (
-                                <div key={f}>
-                                    <label htmlFor={`field-${f}`} className="block text-xs text-white/40 uppercase tracking-wider mb-1.5 capitalize">{f}</label>
+                        <form onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
+                            <div className="space-y-4">
+                                <div>
+                                    <label htmlFor="field-name" className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">Name</label>
                                     <input
-                                        id={`field-${f}`}
-                                        title={f}
-                                        placeholder={`Enter ${f}`}
-                                        type={f === "password" ? "password" : f === "email" ? "email" : "text"}
-                                        value={form[f]}
-                                        onChange={e => setForm(p => ({ ...p, [f]: e.target.value }))}
+                                        id="field-name"
+                                        name="name"
+                                        title="Name"
+                                        placeholder="Enter name"
+                                        type="text"
+                                        value={form.name}
+                                        onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
                                         className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-violet-500/50 transition-all placeholder-white/20"
-                                        autoComplete={f === "email" ? "email" : f === "name" ? "name" : f === "password" ? "new-password" : "off"}
+                                        autoComplete="name"
                                     />
                                 </div>
-                            ))}
-                            <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label htmlFor="user-role" className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">Role</label>
-                                    <select
-                                        id="user-role"
-                                        title="User Role"
-                                        value={form.role}
-                                        onChange={e => setForm(p => ({ ...p, role: e.target.value as AppUser["role"] }))}
-                                        className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-violet-500/50 transition-all"
-                                    >
-                                        <option value="participant">Participant</option>
-                                        <option value="admin">Admin</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label htmlFor="user-status" className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">Status</label>
-                                    <select
-                                        id="user-status"
-                                        title="User Status"
-                                        value={form.status}
-                                        onChange={e => setForm(p => ({ ...p, status: e.target.value as AppUser["status"] }))}
-                                        className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-violet-500/50 transition-all"
-                                    >
-                                        <option value="active">Active</option>
-                                        <option value="inactive">Inactive</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label htmlFor="user-score" className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">Score (%)</label>
+                                    <label htmlFor="field-email" className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">Email</label>
                                     <input
-                                        id="user-score"
-                                        title="Score Percentage"
-                                        placeholder="0"
-                                        type="number" min={0} max={100}
-                                        value={form.score}
-                                        onChange={e => setForm(p => ({ ...p, score: parseInt(e.target.value) || 0 }))}
-                                        className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-violet-500/50 transition-all"
+                                        id="field-email"
+                                        name="email"
+                                        title="Email"
+                                        placeholder="Enter email"
+                                        type="email"
+                                        value={form.email}
+                                        onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+                                        className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-violet-500/50 transition-all placeholder-white/20"
+                                        autoComplete="email"
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="user-rounds" className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">Rounds Done</label>
+                                    <label htmlFor="field-password" className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">Password</label>
                                     <input
-                                        id="user-rounds"
-                                        title="Rounds Completed"
-                                        placeholder="0"
-                                        type="number" min={0} max={3}
-                                        value={form.roundsCompleted}
-                                        onChange={e => setForm(p => ({ ...p, roundsCompleted: parseInt(e.target.value) || 0 }))}
-                                        className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-violet-500/50 transition-all"
+                                        id="field-password"
+                                        name="password"
+                                        title="Password"
+                                        placeholder="Enter password"
+                                        type="password"
+                                        value={form.password}
+                                        onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
+                                        className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-violet-500/50 transition-all placeholder-white/20"
+                                        autoComplete="new-password"
                                     />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label htmlFor="user-role" className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">Role</label>
+                                        <select
+                                            id="user-role"
+                                            title="User Role"
+                                            value={form.role}
+                                            onChange={e => setForm(p => ({ ...p, role: e.target.value as AppUser["role"] }))}
+                                            className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-violet-500/50 transition-all"
+                                        >
+                                            <option value="participant">Participant</option>
+                                            <option value="admin">Admin</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label htmlFor="user-status" className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">Status</label>
+                                        <select
+                                            id="user-status"
+                                            title="User Status"
+                                            value={form.status}
+                                            onChange={e => setForm(p => ({ ...p, status: e.target.value as AppUser["status"] }))}
+                                            className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-violet-500/50 transition-all"
+                                        >
+                                            <option value="active">Active</option>
+                                            <option value="inactive">Inactive</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label htmlFor="user-score" className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">Score (%)</label>
+                                        <input
+                                            id="user-score"
+                                            title="Score Percentage"
+                                            placeholder="0"
+                                            type="number" min={0} max={100}
+                                            value={form.score}
+                                            onChange={e => setForm(p => ({ ...p, score: parseInt(e.target.value) || 0 }))}
+                                            className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-violet-500/50 transition-all"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="user-rounds" className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">Rounds Done</label>
+                                        <input
+                                            id="user-rounds"
+                                            title="Rounds Completed"
+                                            placeholder="0"
+                                            type="number" min={0} max={3}
+                                            value={form.roundsCompleted}
+                                            onChange={e => setForm(p => ({ ...p, roundsCompleted: parseInt(e.target.value) || 0 }))}
+                                            className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-violet-500/50 transition-all"
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div className="flex gap-3 mt-6">
-                            <button
-                                onClick={() => setModalOpen(false)}
-                                className="flex-1 py-2.5 rounded-xl border border-white/10 text-white/60 hover:text-white hover:border-white/20 text-sm transition-all"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleSave}
-                                className="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm transition-all"
-                            >
-                                {editing ? "Save Changes" : "Create User"}
-                            </button>
-                        </div>
+                            <div className="flex gap-3 mt-6">
+                                <button
+                                    type="button"
+                                    onClick={() => setModalOpen(false)}
+                                    className="flex-1 py-2.5 rounded-xl border border-white/10 text-white/60 hover:text-white hover:border-white/20 text-sm transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm transition-all"
+                                >
+                                    {editing ? "Save Changes" : "Create User"}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
