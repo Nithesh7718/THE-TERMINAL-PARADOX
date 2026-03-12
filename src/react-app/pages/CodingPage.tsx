@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, startTransition } from "react";
 import { toast } from "sonner";
 import { useParams, useNavigate } from "react-router";
 import {
@@ -116,6 +116,11 @@ export default function CodingPage() {
     }, [doorNumber]);
 
     const [selectedTestCase, setSelectedTestCase] = useState(1);
+
+    // Stable reference — prevents TestCasePanel memo invalidation on every render
+    const handleSelectTestCase = useCallback((id: number) => {
+        startTransition(() => setSelectedTestCase(id));
+    }, []);
 
     const handleStartChallenge = () => {
         if (!language) return;
@@ -595,7 +600,7 @@ export default function CodingPage() {
                         <TestCasePanel
                             testCases={currentState.testCases}
                             selectedTestCase={selectedTestCase}
-                            onSelectTestCase={setSelectedTestCase}
+                            onSelectTestCase={handleSelectTestCase}
                         />
 
                         {currentState.testCases.some((tc) => tc.status !== "pending") && (

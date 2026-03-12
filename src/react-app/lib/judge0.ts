@@ -50,14 +50,18 @@ export interface ExecutionResult {
 async function fetchWithRetry(
     url: string,
     opts: RequestInit,
-    retries = 3,
-    backoffMs = 800
+    retries = 5,
+    backoffMs = 1000
 ): Promise<Response> {
     for (let attempt = 0; attempt < retries; attempt++) {
         const res = await fetch(url, opts);
         if (res.status !== 429 && res.status !== 503) return res;
         if (attempt < retries - 1) {
-            await new Promise(r => setTimeout(r, backoffMs * (attempt + 1)));
+            // Jitter: randomise ±30% of the backoff so 30 simultaneous retries
+            // don't all fire at exactly the same millisecond ("retry storm").
+            const base = backoffMs * (attempt + 1);
+            const jitter = base * 0.3 * (Math.random() * 2 - 1); // ±30%
+            await new Promise(r => setTimeout(r, Math.round(base + jitter)));
         }
     }
     throw new Error("Judge0 is overloaded. Please wait a moment and try again.");
