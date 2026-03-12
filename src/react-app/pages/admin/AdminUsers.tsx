@@ -288,11 +288,11 @@ export default function AdminUsers() {
                                         id={`field-${f}`}
                                         title={f}
                                         placeholder={`Enter ${f}`}
-                                        type={f === "email" ? "email" : "text"}
+                                        type={f === "password" ? "password" : f === "email" ? "email" : "text"}
                                         value={form[f]}
                                         onChange={e => setForm(p => ({ ...p, [f]: e.target.value }))}
                                         className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-violet-500/50 transition-all placeholder-white/20"
-                                        autoComplete={f === "email" ? "email" : f === "name" ? "name" : "off"}
+                                        autoComplete={f === "email" ? "email" : f === "name" ? "name" : f === "password" ? "new-password" : "off"}
                                     />
                                 </div>
                             ))}
