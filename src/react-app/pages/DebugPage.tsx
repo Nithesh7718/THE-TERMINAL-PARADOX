@@ -61,9 +61,7 @@ function buildCode(
   if (userCode.includes("/*INPUT*/")) {
     return userCode.replace("/*INPUT*/", preamble);
   }
-  // For Java/C/C++, prepending might break syntax if outside class/main.
-  // But for legacy compatibility, we keep it.
-  return preamble + "\n\n" + userCode;
+  return userCode;
 }
 
 type TCStatus = "pending" | "running" | "passed" | "failed" | "error";
