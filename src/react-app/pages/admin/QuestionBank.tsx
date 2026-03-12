@@ -5,7 +5,7 @@ import {
     Save, RefreshCw, Database, AlertCircle, CheckCircle2, Pencil, ArrowUp, ArrowDown,
 } from "lucide-react";
 import {
-    getAllQuestionsForAdmin, saveQuestions, seedAllQuestionsIfEmpty, reseedDebugOnly,
+    getAllQuestionsForAdmin, saveQuestions, seedAllQuestionsIfEmpty, forceReseedAllQuestions, reseedDebugOnly,
     type QuizQuestion, type DebugQuestion, type CodingQuestion, type RoundType,
 } from "@/react-app/lib/questionService";
 
@@ -394,15 +394,11 @@ export default function QuestionBank() {
     const handleSeed = async () => {
         setSeeding(true);
         try {
-            const { seeded } = await seedAllQuestionsIfEmpty();
-            if (seeded === 0) {
-                toast.info("All question banks already have data. No seeding needed.");
-            } else {
-                toast.success(`Seeded ${seeded} question slot(s) from bundled questions!`);
-            }
+            const { seeded } = await forceReseedAllQuestions();
+            toast.success(`Force-seeded all ${seeded} question slot(s) from bundled questions!`);
             await load();
         } catch {
-            toast.error("Seeding failed.");
+            toast.error("Force seeding failed.");
         } finally {
             setSeeding(false);
         }
