@@ -6,373 +6,373 @@ export interface QuizQuestion {
   question: string;
   options: string[];
   correctAnswer: number; // Index of correct option
+  difficulty?: string;
+  type?: string;
 }
 
-// Door 1 - Logic Gate (Programming Fundamentals)
+// Door 1 - Programming Logic (Programming Fundamentals)
 export const door1Questions: QuizQuestion[] = [
   {
     id: 1,
-    question: "What does HTML stand for?",
-    options: [
-      "Hyper Text Markup Language",
-      "High Tech Modern Language",
-      "Hyper Transfer Markup Language",
-      "Home Tool Markup Language",
-    ],
-    correctAnswer: 0,
+    question: "What is the output of: print(3 + 2 * 2) ?",
+    options: ["10", "7", "8", "12"],
+    correctAnswer: 1,
+    difficulty: "easy",
+    type: "code_output"
   },
   {
     id: 2,
-    question: "Which of the following is NOT a programming language?",
-    options: ["Python", "JavaScript", "HTML", "Ruby"],
-    correctAnswer: 2,
+    question: "What is the output of Java code: System.out.println(\"5\" + 2 + 3);",
+    options: ["523", "55", "10", "532"],
+    correctAnswer: 0,
+    difficulty: "easy",
+    type: "code_output"
   },
   {
     id: 3,
-    question: "What is the time complexity of binary search?",
-    options: ["O(n)", "O(log n)", "O(n²)", "O(1)"],
-    correctAnswer: 1,
+    question: "Output of Python code: a=[1,2,3]; print(len(a))",
+    options: ["1", "2", "3", "Error"],
+    correctAnswer: 2,
+    difficulty: "easy",
+    type: "code_output"
   },
   {
     id: 4,
-    question: "Which data structure uses LIFO (Last In First Out)?",
-    options: ["Queue", "Stack", "Linked List", "Tree"],
+    question: "What is wrong in Python code: if x = 5:",
+    options: [
+      "Missing colon",
+      "Assignment used instead of comparison",
+      "Indentation error",
+      "No error"
+    ],
     correctAnswer: 1,
+    difficulty: "easy",
+    type: "debugging"
   },
   {
     id: 5,
-    question: "What does SQL stand for?",
-    options: [
-      "Structured Query Language",
-      "Simple Question Language",
-      "Standard Query Logic",
-      "Sequential Query Language",
-    ],
-    correctAnswer: 0,
+    question: "Output of Java code: int x=5; System.out.println(x++ + ++x);",
+    options: ["11", "12", "13", "14"],
+    correctAnswer: 2,
+    difficulty: "medium",
+    type: "code_output"
   },
   {
     id: 6,
-    question: "Which operator is used for strict equality in JavaScript?",
-    options: ["==", "===", "!=", "="],
+    question: "Output of Python: print(\"abc\"[1])",
+    options: ["a", "b", "c", "Error"],
     correctAnswer: 1,
+    difficulty: "medium",
+    type: "code_output"
   },
   {
     id: 7,
-    question: "What is the default port for HTTP?",
-    options: ["443", "21", "80", "8080"],
-    correctAnswer: 2,
+    question: "What is wrong in this Java loop? for(int i=0;i<=5;i++); { System.out.println(i); }",
+    options: [
+      "Wrong loop condition",
+      "Semicolon after for loop",
+      "Print statement incorrect",
+      "No error"
+    ],
+    correctAnswer: 1,
+    difficulty: "medium",
+    type: "debugging"
   },
   {
     id: 8,
-    question: "Which of these is a valid way to declare a variable in Python?",
-    options: ["var x = 5", "int x = 5", "x = 5", "let x = 5"],
-    correctAnswer: 2,
+    question: "Output of Python: a=[1,2]; b=a; b.append(3); print(a)",
+    options: ["[1,2]", "[1,2,3]", "[3]", "Error"],
+    correctAnswer: 1,
+    difficulty: "medium",
+    type: "code_output"
   },
   {
     id: 9,
-    question: "What does API stand for?",
-    options: [
-      "Application Programming Interface",
-      "Advanced Program Integration",
-      "Automated Programming Interface",
-      "Application Process Integration",
-    ],
+    question: "Output of Java: System.out.println(10 + 20 + \"30\");",
+    options: ["3030", "102030", "60", "3020"],
     correctAnswer: 0,
+    difficulty: "medium",
+    type: "code_output"
   },
   {
     id: 10,
-    question: "Which sorting algorithm has the best average time complexity?",
-    options: ["Bubble Sort", "Selection Sort", "Quick Sort", "Insertion Sort"],
-    correctAnswer: 2,
+    question: "Output of Python: print(bool(\"False\"))",
+    options: ["False", "True", "Error", "None"],
+    correctAnswer: 1,
+    difficulty: "medium",
+    type: "code_output"
   },
   {
     id: 11,
-    question: "What is the purpose of a constructor in OOP?",
-    options: [
-      "To destroy objects",
-      "To initialize object properties",
-      "To create loops",
-      "To define classes",
-    ],
+    question: "Output of Python: print(2 ** 3 ** 2)",
+    options: ["64", "512", "256", "128"],
     correctAnswer: 1,
+    difficulty: "hard",
+    type: "code_output"
   },
   {
     id: 12,
-    question: "Which of these is NOT a valid HTTP method?",
-    options: ["GET", "POST", "FETCH", "DELETE"],
-    correctAnswer: 2,
+    question: "Output of Java nested if: int x=10; if(x>5) if(x>8) System.out.print(\"A\"); else System.out.print(\"B\");",
+    options: ["A", "B", "AB", "No output"],
+    correctAnswer: 0,
+    difficulty: "hard",
+    type: "code_output"
   },
   {
     id: 13,
-    question: "What does JSON stand for?",
-    options: [
-      "JavaScript Object Notation",
-      "Java Standard Object Notation",
-      "JavaScript Online Notation",
-      "Java Serialized Object Notation",
-    ],
-    correctAnswer: 0,
+    question: "Output of Python recursion: f(n)=n*f(n-1), f(4)",
+    options: ["16", "20", "24", "32"],
+    correctAnswer: 2,
+    difficulty: "hard",
+    type: "code_output"
   },
   {
     id: 14,
-    question: "Which data structure is best for implementing a priority queue?",
-    options: ["Array", "Linked List", "Heap", "Hash Table"],
+    question: "What error occurs: int arr[] = new int[5]; arr[5] = 10;",
+    options: [
+      "Syntax error",
+      "Compile error",
+      "ArrayIndexOutOfBoundsException",
+      "Overflow"
+    ],
     correctAnswer: 2,
+    difficulty: "hard",
+    type: "debugging"
   },
   {
     id: 15,
-    question: "What is recursion?",
-    options: [
-      "A loop that runs forever",
-      "A function that calls itself",
-      "A type of data structure",
-      "A sorting algorithm",
-    ],
+    question: "Output of Python: a=[1,2,3]; print(a[::-1])",
+    options: ["[1,2,3]", "[3,2,1]", "[2,3,1]", "Error"],
     correctAnswer: 1,
-  },
+    difficulty: "hard",
+    type: "code_output"
+  }
 ];
 
 // Door 2 - Algorithm Alley (Data Structures & Algorithms)
 export const door2Questions: QuizQuestion[] = [
   {
     id: 1,
-    question: "What is the space complexity of merge sort?",
-    options: ["O(1)", "O(log n)", "O(n)", "O(n²)"],
-    correctAnswer: 2,
+    question: "Which data structure uses LIFO?",
+    options: ["Queue", "Stack", "Tree", "Array"],
+    correctAnswer: 1,
+    difficulty: "easy"
   },
   {
     id: 2,
-    question: "Which traversal visits the root node first?",
-    options: ["Inorder", "Preorder", "Postorder", "Level order"],
+    question: "Which algorithm searches sorted arrays efficiently?",
+    options: ["Linear Search", "Binary Search", "DFS", "BFS"],
     correctAnswer: 1,
+    difficulty: "easy"
   },
   {
     id: 3,
-    question: "What is the worst-case time complexity of quicksort?",
-    options: ["O(n log n)", "O(n)", "O(n²)", "O(log n)"],
-    correctAnswer: 2,
+    question: "Which algorithm finds Minimum Spanning Tree?",
+    options: ["DFS", "Kruskal", "Binary Search", "Selection"],
+    correctAnswer: 1,
+    difficulty: "easy"
   },
   {
     id: 4,
-    question: "Which data structure is used in BFS traversal?",
-    options: ["Stack", "Queue", "Heap", "Tree"],
-    correctAnswer: 1,
+    question: "Which structure stores key-value pairs?",
+    options: ["HashMap", "Stack", "Queue", "LinkedList"],
+    correctAnswer: 0,
+    difficulty: "easy"
   },
   {
     id: 5,
-    question: "What is a hash collision?",
-    options: [
-      "Two keys producing the same hash value",
-      "A hash table overflow",
-      "An invalid hash function",
-      "Memory corruption",
-    ],
-    correctAnswer: 0,
+    question: "Average time complexity of Quick Sort?",
+    options: ["O(n²)", "O(n log n)", "O(n)", "O(log n)"],
+    correctAnswer: 1,
+    difficulty: "medium"
   },
   {
     id: 6,
-    question: "Which algorithm finds the shortest path in a weighted graph?",
-    options: ["DFS", "BFS", "Dijkstra's", "Binary Search"],
+    question: "Which traversal outputs sorted BST elements?",
+    options: ["Preorder", "Postorder", "Inorder", "Level order"],
     correctAnswer: 2,
+    difficulty: "medium"
   },
   {
     id: 7,
-    question: "What is the height of a balanced binary tree with n nodes?",
-    options: ["O(n)", "O(log n)", "O(n²)", "O(1)"],
-    correctAnswer: 1,
+    question: "Which algorithm finds shortest path in weighted graph?",
+    options: ["DFS", "BFS", "Dijkstra", "Prim"],
+    correctAnswer: 2,
+    difficulty: "medium"
   },
   {
     id: 8,
-    question: "Which sorting algorithm is stable?",
-    options: ["Quick Sort", "Heap Sort", "Merge Sort", "Selection Sort"],
-    correctAnswer: 2,
+    question: "Which technique solves N-Queens?",
+    options: ["Greedy", "Backtracking", "BFS", "DP"],
+    correctAnswer: 1,
+    difficulty: "medium"
   },
   {
     id: 9,
-    question: "What is dynamic programming?",
-    options: [
-      "Programming at runtime",
-      "Breaking problems into subproblems and storing results",
-      "Object-oriented programming",
-      "Functional programming",
-    ],
-    correctAnswer: 1,
+    question: "Complexity of heap insertion?",
+    options: ["O(log n)", "O(n)", "O(n log n)", "O(1)"],
+    correctAnswer: 0,
+    difficulty: "medium"
   },
   {
     id: 10,
-    question: "What is the amortized time complexity of push in a dynamic array?",
-    options: ["O(n)", "O(1)", "O(log n)", "O(n²)"],
+    question: "Which technique is used in Merge Sort?",
+    options: ["Greedy", "Divide and Conquer", "BFS", "Backtracking"],
     correctAnswer: 1,
+    difficulty: "medium"
   },
   {
     id: 11,
-    question: "Which data structure is used in DFS traversal?",
-    options: ["Queue", "Stack", "Heap", "Hash Table"],
+    question: "Time complexity of building heap from n elements?",
+    options: ["O(n log n)", "O(n)", "O(log n)", "O(n²)"],
     correctAnswer: 1,
+    difficulty: "hard"
   },
   {
     id: 12,
-    question: "What is the time complexity of inserting at the head of a linked list?",
-    options: ["O(n)", "O(log n)", "O(1)", "O(n²)"],
-    correctAnswer: 2,
+    question: "Which algorithm finds strongly connected components?",
+    options: ["Dijkstra", "Kosaraju", "Prim", "BFS"],
+    correctAnswer: 1,
+    difficulty: "hard"
   },
   {
     id: 13,
-    question: "Which technique is used to handle hash collisions by storing in adjacent slots?",
-    options: ["Chaining", "Linear Probing", "Rehashing", "Bucketing"],
+    question: "Worst-case complexity of Quickselect?",
+    options: ["O(n log n)", "O(n²)", "O(log n)", "O(n)"],
     correctAnswer: 1,
+    difficulty: "hard"
   },
   {
     id: 14,
-    question: "What is the minimum number of edges in a connected graph with n vertices?",
-    options: ["n", "n-1", "n+1", "2n"],
+    question: "Which algorithm detects negative cycles?",
+    options: ["Dijkstra", "Bellman-Ford", "BFS", "Prim"],
     correctAnswer: 1,
+    difficulty: "hard"
   },
   {
     id: 15,
-    question: "Which algorithm is used to find minimum spanning tree?",
-    options: ["Dijkstra's", "Bellman-Ford", "Floyd-Warshall", "Kruskal's"],
-    correctAnswer: 3,
-  },
+    question: "Time complexity of Floyd-Warshall?",
+    options: ["O(n²)", "O(n³)", "O(n log n)", "O(n⁴)"],
+    correctAnswer: 1,
+    difficulty: "hard"
+  }
 ];
 
 // Door 3 - System Path (OS & Networks)
 export const door3Questions: QuizQuestion[] = [
   {
     id: 1,
-    question: "What does TCP stand for?",
-    options: [
-      "Transmission Control Protocol",
-      "Transfer Control Protocol",
-      "Transmission Communication Protocol",
-      "Technical Control Protocol",
-    ],
-    correctAnswer: 0,
+    question: "Which command prints the current directory?",
+    options: ["ls", "pwd", "cd", "dir"],
+    correctAnswer: 1,
+    difficulty: "easy",
+    type: "linux"
   },
   {
     id: 2,
-    question: "Which OSI layer handles routing?",
-    options: ["Transport", "Network", "Data Link", "Physical"],
-    correctAnswer: 1,
+    question: "Which command lists files in Linux?",
+    options: ["list", "show", "ls", "files"],
+    correctAnswer: 2,
+    difficulty: "easy",
+    type: "linux"
   },
   {
     id: 3,
-    question: "What is a deadlock?",
-    options: [
-      "A system crash",
-      "A situation where processes wait indefinitely for resources",
-      "A network failure",
-      "A memory leak",
-    ],
-    correctAnswer: 1,
+    question: "Which memory is fastest?",
+    options: ["HDD", "RAM", "Cache", "SSD"],
+    correctAnswer: 2,
+    difficulty: "easy"
   },
   {
     id: 4,
-    question: "Which scheduling algorithm may cause starvation?",
-    options: ["Round Robin", "FIFO", "Priority Scheduling", "Shortest Job First"],
-    correctAnswer: 2,
+    question: "Which command changes directory?",
+    options: ["cd", "ls", "pwd", "mv"],
+    correctAnswer: 0,
+    difficulty: "easy",
+    type: "linux"
   },
   {
     id: 5,
-    question: "What is virtual memory?",
-    options: [
-      "RAM that doesn't exist",
-      "A technique to extend physical memory using disk",
-      "Cloud storage",
-      "A type of cache",
-    ],
-    correctAnswer: 1,
+    question: "Command to create directory?",
+    options: ["mkdir", "makedir", "newdir", "createdir"],
+    correctAnswer: 0,
+    difficulty: "medium"
   },
   {
     id: 6,
-    question: "Which protocol is used for secure web browsing?",
-    options: ["HTTP", "FTP", "HTTPS", "SMTP"],
-    correctAnswer: 2,
+    question: "Which command removes file?",
+    options: ["del", "rm", "erase", "remove"],
+    correctAnswer: 1,
+    difficulty: "medium"
   },
   {
     id: 7,
-    question: "What is a mutex?",
-    options: [
-      "A type of virus",
-      "A synchronization primitive for mutual exclusion",
-      "A network protocol",
-      "A file system",
-    ],
-    correctAnswer: 1,
+    question: "Command to show running processes?",
+    options: ["ps", "run", "process", "top"],
+    correctAnswer: 0,
+    difficulty: "medium"
   },
   {
     id: 8,
-    question: "What does DNS stand for?",
-    options: [
-      "Domain Name System",
-      "Data Network Service",
-      "Digital Name Server",
-      "Domain Network System",
-    ],
-    correctAnswer: 0,
+    question: "Which system call creates new process?",
+    options: ["exec()", "fork()", "spawn()", "start()"],
+    correctAnswer: 1,
+    difficulty: "medium"
   },
   {
     id: 9,
-    question: "Which page replacement algorithm is optimal?",
-    options: ["FIFO", "LRU", "Optimal (OPT)", "Clock"],
-    correctAnswer: 2,
+    question: "Which command copies files?",
+    options: ["mv", "cp", "clone", "paste"],
+    correctAnswer: 1,
+    difficulty: "medium"
   },
   {
     id: 10,
-    question: "What is thrashing?",
-    options: [
-      "A virus attack",
-      "Excessive paging causing poor performance",
-      "Network congestion",
-      "Disk failure",
-    ],
-    correctAnswer: 1,
+    question: "Which command shows manual page?",
+    options: ["help", "info", "man", "doc"],
+    correctAnswer: 2,
+    difficulty: "medium"
   },
   {
     id: 11,
-    question: "Which IP address class is used for multicast?",
-    options: ["Class A", "Class B", "Class C", "Class D"],
-    correctAnswer: 3,
+    question: "Which scheduling algorithm gives minimum waiting time?",
+    options: ["FCFS", "SJF", "Round Robin", "Priority"],
+    correctAnswer: 1,
+    difficulty: "hard"
   },
   {
     id: 12,
-    question: "What is the purpose of ARP?",
+    question: "Deadlock occurs due to:",
     options: [
-      "Map IP addresses to MAC addresses",
-      "Route packets",
-      "Establish TCP connections",
-      "Encrypt data",
+      "Mutual exclusion",
+      "Hold and wait",
+      "Circular wait",
+      "All of the above"
     ],
-    correctAnswer: 0,
+    correctAnswer: 3,
+    difficulty: "hard"
   },
   {
     id: 13,
-    question: "Which file system is commonly used in Linux?",
-    options: ["NTFS", "FAT32", "ext4", "HFS+"],
-    correctAnswer: 2,
+    question: "Which OS architecture has minimal kernel?",
+    options: ["Monolithic", "Microkernel", "Layered", "Hybrid"],
+    correctAnswer: 1,
+    difficulty: "hard"
   },
   {
     id: 14,
-    question: "What is a semaphore?",
-    options: [
-      "A type of interrupt",
-      "A signaling mechanism for process synchronization",
-      "A memory allocation technique",
-      "A network packet",
-    ],
+    question: "Which component handles interrupts?",
+    options: ["Shell", "Kernel", "Compiler", "Loader"],
     correctAnswer: 1,
+    difficulty: "hard"
   },
   {
     id: 15,
-    question: "What does DHCP provide?",
-    options: [
-      "Static IP addresses",
-      "Automatic IP address assignment",
-      "DNS resolution",
-      "File transfer",
-    ],
-    correctAnswer: 1,
-  },
+    question: "Which component switches CPU between processes?",
+    options: ["Dispatcher", "Loader", "Kernel", "Scheduler"],
+    correctAnswer: 0,
+    difficulty: "hard"
+  }
 ];
 
 export const getQuestionsForDoor = (doorNumber: number): QuizQuestion[] => {
