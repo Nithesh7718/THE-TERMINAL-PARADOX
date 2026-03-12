@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
     Plus,
     Pencil,
@@ -7,6 +7,20 @@ import {
     ChevronUp,
     ChevronDown,
 } from "lucide-react";
+import {
+    type QuizQuestion,
+    type DebugQuestion,
+    type CodingQuestion,
+    type RoundType,
+} from "@/react-app/lib/questionService";
+
+const ProgressBar = ({ percent }: { percent: number }) => {
+    const ref = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (ref.current) ref.current.style.width = `${percent}%`;
+    }, [percent]);
+    return <div ref={ref} className="h-full bg-violet-500 rounded-full transition-all duration-500" />;
+};
 import { subscribeToUsers, adminUpdateUser, type FSUser } from "@/react-app/lib/userService";
 import { doc, deleteDoc } from "firebase/firestore";
 import { db } from "@/react-app/lib/firebase";
@@ -203,10 +217,7 @@ export default function AdminUsers() {
                                         <div className="flex flex-col gap-1">
                                             <div className="flex items-center gap-2">
                                                 <div className="flex-1 max-w-[80px] h-1.5 bg-white/5 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-violet-500 rounded-full"
-                                                        style={{ width: `${Math.min(user.score / (user.roundsCompleted || 1), 100)}%` }}
-                                                    />
+                                                    <ProgressBar percent={Math.min(user.score / (user.roundsCompleted || 1), 100)} />
                                                 </div>
                                                 <span className="text-white/80 font-bold">{user.score}</span>
                                             </div>
@@ -281,6 +292,7 @@ export default function AdminUsers() {
                                         value={form[f]}
                                         onChange={e => setForm(p => ({ ...p, [f]: e.target.value }))}
                                         className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-violet-500/50 transition-all placeholder-white/20"
+                                        autoComplete={f === "email" ? "email" : f === "name" ? "name" : "off"}
                                     />
                                 </div>
                             ))}

@@ -99,6 +99,40 @@ function DebugEditor({ q, onChange }: { q: DebugQuestion; onChange: (q: DebugQue
                 />
             </div>
             <div>
+                <label className="text-xs text-white/40 uppercase tracking-wider mb-1 block">Input Variables (comma separated)</label>
+                <input
+                    title="Short names for UI labels"
+                    placeholder="e.g. a, b, target"
+                    value={q.inputVarNames.join(", ")}
+                    onChange={e => onChange({ ...q, inputVarNames: e.target.value.split(",").map(v => v.trim()).filter(Boolean) })}
+                    className="w-full px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500/50"
+                />
+            </div>
+            <div>
+                <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs text-white/40 uppercase tracking-wider">Language Preamble (for UI hints)</label>
+                    <div className="flex gap-1">
+                        {(Object.keys(q.inputPreamble) as (keyof DebugQuestion["inputPreamble"])[]).map(l => (
+                            <button
+                                key={l}
+                                title={`Edit ${l} preamble`}
+                                onClick={() => setLang(l)}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase transition-all ${lang === l ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" : "text-white/30 hover:text-white/50"}`}
+                            >
+                                {l}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                <input
+                    title={`${lang} preamble template`}
+                    placeholder={`e.g. let a = {0}, b = {1};`}
+                    value={q.inputPreamble[lang]}
+                    onChange={e => onChange({ ...q, inputPreamble: { ...q.inputPreamble, [lang]: e.target.value } })}
+                    className="w-full px-2 py-1.5 rounded-lg bg-black/40 border border-white/10 text-amber-200 text-xs font-mono focus:outline-none focus:border-amber-500/50"
+                />
+            </div>
+            <div>
                 <div className="flex items-center justify-between mb-1">
                     <label className="text-xs text-white/40 uppercase tracking-wider">Buggy Code</label>
                     <div className="flex gap-1">
@@ -127,7 +161,7 @@ function DebugEditor({ q, onChange }: { q: DebugQuestion; onChange: (q: DebugQue
                 <label className="text-xs text-white/40 uppercase tracking-wider mb-1 block">Test Cases (one per line: input | expectedOutput)</label>
                 <textarea
                     title="Test cases"
-                    placeholder="5, 3 | 8&#10;10, 20 | 30"
+                    placeholder="5 3 | 8&#10;10 20 | 30"
                     rows={3}
                     value={q.testCases.map(t => `${t.input} | ${t.expectedOutput}`).join("\n")}
                     onChange={e => {

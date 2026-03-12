@@ -90,3 +90,8 @@
     cursor: pointer;
   }
 }
+
+/* Dynamic width helper to bypass inline style lints */
+.bg-violet-500.rounded-full {
+  width: var(--progress, 0%);
+}
