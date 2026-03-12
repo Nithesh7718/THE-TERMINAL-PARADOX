@@ -124,16 +124,6 @@ export async function forceReseedAllQuestions(): Promise<{ seeded: number }> {
     return { seeded: slots.length };
 }
 
-/** Force-overwrite only debug question slots — useful when buggy code templates change */
-export async function reseedDebugOnly(): Promise<void> {
-    const { door1DebugQuestions, door2DebugQuestions, door3DebugQuestions } =
-        await import("@/react-app/data/debugQuestions");
-    await Promise.all([
-        setDoc(qKey("debug", 1), { questions: door1DebugQuestions, updatedAt: new Date().toISOString() }),
-        setDoc(qKey("debug", 2), { questions: door2DebugQuestions, updatedAt: new Date().toISOString() }),
-        setDoc(qKey("debug", 3), { questions: door3DebugQuestions, updatedAt: new Date().toISOString() }),
-    ]);
-}
 
 // ── Read all slots for admin ──────────────────────────────────────
 export async function getAllQuestionsForAdmin(): Promise<Record<string, unknown[]>> {
