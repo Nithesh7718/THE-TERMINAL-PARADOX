@@ -1,7 +1,7 @@
 import {
     collection, doc, setDoc, getDoc, updateDoc,
     onSnapshot, query, orderBy, serverTimestamp,
-    where, getDocs
+    where, getDocs, runTransaction
 } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -78,22 +78,21 @@ export async function updateUserScore(
 ): Promise<void> {
     const id = emailToId(email);
     const ref = doc(USERS_COL, id);
-    const snap = await getDoc(ref);
 
-    if (!snap.exists()) return;
-    const userData = snap.data() as FSUser;
+    await runTransaction(db, async (transaction) => {
+        const snap = await transaction.get(ref);
+        if (!snap.exists()) return;
 
-    // Update individual round score
-    const newRoundScores = { ...userData.roundScores, [roundNumber]: roundScore };
+        const userData = snap.data() as FSUser;
+        const newRoundScores = { ...(userData.roundScores || {}), [roundNumber]: roundScore };
+        const totalScore = Object.values(newRoundScores).reduce((acc, s) => acc + s, 0);
 
-    // Calculate total score from all rounds
-    const totalScore = Object.values(newRoundScores).reduce((acc, s) => acc + s, 0);
-
-    await updateDoc(ref, {
-        score: totalScore,
-        roundScores: newRoundScores,
-        roundsCompleted,
-        lastActive: new Date().toISOString(),
+        transaction.update(ref, {
+            score: totalScore,
+            roundScores: newRoundScores,
+            roundsCompleted: Math.max(userData.roundsCompleted || 0, roundsCompleted),
+            lastActive: new Date().toISOString(),
+        });
     });
 }
 

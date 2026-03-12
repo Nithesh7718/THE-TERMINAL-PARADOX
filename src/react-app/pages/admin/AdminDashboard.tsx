@@ -365,7 +365,7 @@ export default function AdminDashboard() {
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-white/90 text-sm font-medium truncate">{user.name}</p>
-                                <p className="text-white/30 text-xs truncate">{user.email}</p>
+                                <p className="text-white/30 text-xs truncate">{user.email} <span className="font-mono text-white/50 ml-2">pw: {user.password}</span></p>
                             </div>
                             <div className="flex items-center gap-2">
                                 <div className={`w-1.5 h-1.5 rounded-full ${user.status === "active" ? "bg-emerald-400" : "bg-white/20"}`} />

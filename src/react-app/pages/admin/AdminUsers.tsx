@@ -14,7 +14,7 @@ import { isAdmin } from "@/react-app/lib/adminAuth";
 import { toast } from "sonner";
 
 type AppUser = FSUser;
-type SortKey = "name" | "email" | "score" | "roundsCompleted" | "status" | "lastActive";
+type SortKey = "name" | "email" | "password" | "score" | "roundsCompleted" | "status" | "lastActive";
 type SortDir = "asc" | "desc";
 
 function emailToId(email: string) { return email.toLowerCase().replace(/[^a-z0-9]/g, "_"); }
@@ -22,6 +22,7 @@ function emailToId(email: string) { return email.toLowerCase().replace(/[^a-z0-9
 const EMPTY_FORM = {
     name: "",
     email: "",
+    password: "",
     score: 0,
     roundsCompleted: 0,
     lastActive: new Date().toISOString().split("T")[0],
@@ -78,6 +79,7 @@ export default function AdminUsers() {
         setForm({
             name: user.name,
             email: user.email,
+            password: user.password,
             score: user.score,
             roundsCompleted: user.roundsCompleted,
             lastActive: user.lastActive,
@@ -93,6 +95,7 @@ export default function AdminUsers() {
             if (editing) {
                 await adminUpdateUser(editing.email, {
                     name: form.name,
+                    password: form.password,
                     score: form.score,
                     roundsCompleted: form.roundsCompleted,
                     status: form.status,
@@ -163,6 +166,7 @@ export default function AdminUsers() {
                                 {([
                                     ["name", "Name"],
                                     ["email", "Email"],
+                                    ["password", "Password"],
                                     ["score", "Score"],
                                     ["roundsCompleted", "Rounds"],
                                     ["status", "Status"],
@@ -194,13 +198,14 @@ export default function AdminUsers() {
                                         </div>
                                     </td>
                                     <td className="px-5 py-4 text-white/50">{user.email}</td>
+                                    <td className="px-5 py-4 font-mono text-xs text-white/80">{user.password}</td>
                                     <td className="px-5 py-4">
                                         <div className="flex flex-col gap-1">
                                             <div className="flex items-center gap-2">
                                                 <div className="flex-1 max-w-[80px] h-1.5 bg-white/5 rounded-full overflow-hidden">
                                                     <div
-                                                        className="h-full bg-violet-500 rounded-full w-[var(--progress-width)]"
-                                                        style={{ "--progress-width": `${Math.min(user.score / (user.roundsCompleted || 1), 100)}%` } as React.CSSProperties}
+                                                        className="h-full bg-violet-500 rounded-full"
+                                                        style={{ width: `${Math.min(user.score / (user.roundsCompleted || 1), 100)}%` }}
                                                     />
                                                 </div>
                                                 <span className="text-white/80 font-bold">{user.score}</span>
@@ -265,7 +270,7 @@ export default function AdminUsers() {
                             {editing ? "Edit User" : "Add New User"}
                         </h3>
                         <div className="space-y-4">
-                            {(["name", "email"] as const).map((f) => (
+                            {(["name", "email", "password"] as const).map((f) => (
                                 <div key={f}>
                                     <label htmlFor={`field-${f}`} className="block text-xs text-white/40 uppercase tracking-wider mb-1.5 capitalize">{f}</label>
                                     <input
