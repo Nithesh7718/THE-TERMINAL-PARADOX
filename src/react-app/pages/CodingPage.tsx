@@ -84,7 +84,12 @@ export default function CodingPage() {
     const [questions, setQuestions] = useState<CodingQuestion[]>([]);
     const [questionsLoaded, setQuestionsLoaded] = useState(false);
     const [questionStates, setQuestionStates] = useState<
-        { code: string; testCases: TestCase[]; score: number }[]
+        {
+            code: string;
+            testCases: TestCase[];
+            hiddenResults?: { status: "passed" | "failed" }[];
+            score: number;
+        }[]
     >([]);
 
     // Load questions from Firestore (with static fallback)
@@ -99,6 +104,9 @@ export default function CodingPage() {
                         input: tc.input,
                         expectedOutput: tc.expectedOutput,
                         status: "pending" as const,
+                    })),
+                    hiddenResults: (q.hiddenTestCases ?? []).map(() => ({
+                        status: "pending" as any,
                     })),
                     score: 0,
                 }))
@@ -120,6 +128,9 @@ export default function CodingPage() {
                     expectedOutput: tc.expectedOutput,
                     status: "pending" as const,
                 })),
+                hiddenResults: (q.hiddenTestCases ?? []).map(() => ({
+                    status: "pending" as any,
+                })),
                 score: 0,
             }))
         );
@@ -137,11 +148,12 @@ export default function CodingPage() {
     const handleRunTests = async () => {
         if (!language) return;
         setIsRunning(true);
+        const qIdx = currentQuestion; // Capture current question index
         setQuestionStates((prev) => {
             const ns = [...prev];
-            ns[currentQuestion] = {
-                ...ns[currentQuestion],
-                testCases: ns[currentQuestion].testCases.map((tc) => ({
+            ns[qIdx] = {
+                ...ns[qIdx],
+                testCases: ns[qIdx].testCases.map((tc) => ({
                     ...tc,
                     status: "running" as const,
                 })),
@@ -149,15 +161,32 @@ export default function CodingPage() {
             return ns;
         });
 
-        const state = questionStates[currentQuestion];
-        const results = await Promise.all(
+        const state = questionStates[qIdx];
+
+        // 1. Run visible test cases
+        const visibleResults = await Promise.all(
             state.testCases.map(async (tc) => {
                 try {
                     const result = await runCode(language, state.code, tc.input);
+
+                    const normalize = (s: string) => (s || "").trim().toLowerCase();
+                    const clean = (s: string) => normalize(s).replace(/\s+/g, "");
+
+                    const actualFull = result.output;
+                    const lines = actualFull.split('\n').filter(l => l.trim() !== "");
+                    const lastLine = lines[lines.length - 1] || "";
+
+                    const actualNorm = normalize(actualFull);
+                    const lastLineNorm = normalize(lastLine);
+                    const expectedNorm = normalize(tc.expectedOutput);
+
                     const passed =
                         !result.isError &&
-                        result.output.trim().toLowerCase() ===
-                        tc.expectedOutput.trim().toLowerCase();
+                        (actualNorm === expectedNorm ||
+                            lastLineNorm === expectedNorm ||
+                            clean(actualFull) === clean(tc.expectedOutput) ||
+                            clean(lastLine) === clean(tc.expectedOutput));
+
                     return {
                         status: (result.isError ? "failed" : passed ? "passed" : "failed") as "passed" | "failed",
                         actualOutput: result.isError
@@ -172,18 +201,46 @@ export default function CodingPage() {
             })
         );
 
+        // 2. Run hidden test cases
+        const hiddenResults = await Promise.all(
+            (questions[qIdx].hiddenTestCases ?? []).map(async (tc) => {
+                try {
+                    const result = await runCode(language, state.code, tc.input);
+                    const normalize = (s: string) => (s || "").trim().toLowerCase();
+                    const clean = (s: string) => normalize(s).replace(/\s+/g, "");
+                    const lines = result.output.split('\n').filter(l => l.trim() !== "");
+                    const lastLine = lines[lines.length - 1] || "";
+
+                    const passed = !result.isError && (
+                        normalize(result.output) === normalize(tc.expectedOutput) ||
+                        normalize(lastLine) === normalize(tc.expectedOutput) ||
+                        clean(result.output) === clean(tc.expectedOutput) ||
+                        clean(lastLine) === clean(tc.expectedOutput)
+                    );
+                    return { status: (passed ? "passed" : "failed") as "passed" | "failed" };
+                } catch {
+                    return { status: "failed" as const };
+                }
+            })
+        );
+
         setQuestionStates((prev) => {
             const newStates = [...prev];
-            const testedCases = newStates[currentQuestion].testCases.map((tc, i) => ({
+            const testedCases = newStates[qIdx].testCases.map((tc, i) => ({
                 ...tc,
-                status: results[i].status,
-                actualOutput: results[i].actualOutput,
+                status: visibleResults[i].status,
+                actualOutput: visibleResults[i].actualOutput,
             }));
-            const passedCount = testedCases.filter((tc) => tc.status === "passed").length;
-            newStates[currentQuestion] = {
-                ...newStates[currentQuestion],
+
+            const totalPassed = testedCases.filter(tc => tc.status === "passed").length +
+                hiddenResults.filter(r => r.status === "passed").length;
+            const totalCases = testedCases.length + hiddenResults.length;
+
+            newStates[qIdx] = {
+                ...newStates[qIdx],
                 testCases: testedCases,
-                score: Math.round((passedCount / testedCases.length) * 100),
+                hiddenResults: hiddenResults,
+                score: Math.round((totalPassed / Math.max(totalCases, 1)) * 100),
             };
             return newStates;
         });
@@ -256,7 +313,7 @@ export default function CodingPage() {
     const alreadyCompleted = dbProgress >= 3;
     if (alreadyCompleted && !isSubmitted) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center px-4">
+            <main className="min-h-screen bg-background flex items-center justify-center px-4">
                 <div className="max-w-md w-full bg-card border border-border rounded-2xl p-10 text-center">
                     <CheckCircle2 className="w-14 h-14 text-chart-1 mx-auto mb-4" />
                     <h2 className="text-2xl font-bold text-foreground mb-2">Already Completed</h2>
@@ -265,7 +322,7 @@ export default function CodingPage() {
                     </p>
                     <Button onClick={() => navigate("/")}>Back to Home</Button>
                 </div>
-            </div>
+            </main>
         );
     }
 
@@ -273,12 +330,12 @@ export default function CodingPage() {
     if (!hasStarted) {
         return (
             <div className="min-h-screen bg-background">
-                <div className="fixed inset-0 overflow-hidden pointer-events-none">
+                <div className="fixed inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
                     <div className="absolute top-1/4 -left-32 w-96 h-96 bg-chart-5/10 rounded-full blur-3xl animate-pulse" />
                     <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse delay-1000" />
                 </div>
 
-                <div className="relative z-10 max-w-2xl mx-auto px-4 py-16">
+                <main className="relative z-10 max-w-2xl mx-auto px-4 py-16">
                     <Button
                         variant="ghost"
                         onClick={() => navigate("/")}
@@ -345,19 +402,19 @@ export default function CodingPage() {
                             Start Coding Challenge
                         </Button>
                     </div>
-                </div>
+                </main>
             </div>
         );
     }
 
     return (
         <div className="min-h-screen bg-background">
-            <div className="fixed inset-0 overflow-hidden pointer-events-none">
+            <div className="fixed inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
                 <div className="absolute top-1/4 -left-32 w-96 h-96 bg-chart-5/10 rounded-full blur-3xl animate-pulse" />
                 <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse delay-1000" />
             </div>
 
-            <div className="relative z-10 max-w-7xl mx-auto px-4 py-6">
+            <main className="relative z-10 max-w-7xl mx-auto px-4 py-6">
                 {/* Header */}
                 <header className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-4">
@@ -674,7 +731,7 @@ export default function CodingPage() {
                         </div>
                     </div>
                 )}
-            </div>
+            </main>
 
             {/* Submit dialog */}
             <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>

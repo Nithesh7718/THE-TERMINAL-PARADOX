@@ -83,12 +83,12 @@ export default function Login() {
 
     return (
         <div className="min-h-screen bg-background flex items-center justify-center px-4">
-            <div className="fixed inset-0 overflow-hidden pointer-events-none">
+            <div className="fixed inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
                 <div className="absolute top-1/4 -left-32 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse" />
                 <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-chart-1/10 rounded-full blur-3xl animate-pulse delay-1000" />
             </div>
 
-            <div className="relative w-full max-w-md">
+            <main className="relative w-full max-w-md">
                 <div className="bg-card border border-border rounded-2xl p-8 shadow-[0_0_60px_rgba(45,212,191,0.07)]">
                     <div className="text-center mb-7">
                         <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-2xl bg-gradient-to-br from-primary to-chart-1 shadow-[0_0_30px_rgba(45,212,191,0.3)]">
@@ -186,7 +186,7 @@ export default function Login() {
                         </button>
                     </form>
                 </div>
-            </div>
+            </main>
         </div>
     );
 }

@@ -171,7 +171,7 @@ export default function QuizPage() {
   // Already completed this round — show locked banner
   if (alreadyCompleted && !isSubmitted) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <main className="min-h-screen bg-background flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-card border border-border rounded-2xl p-10 text-center">
           <CheckCircle2 className="w-14 h-14 text-chart-1 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-foreground mb-2">Already Completed</h2>
@@ -180,19 +180,19 @@ export default function QuizPage() {
           </p>
           <Button onClick={() => navigate("/")}>Back to Home</Button>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
       {/* Animated background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div className="absolute top-1/4 -left-32 w-96 h-96 bg-chart-3/10 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse delay-1000" />
       </div>
 
-      <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
+      <main className="relative z-10 max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <header className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
@@ -375,7 +375,7 @@ export default function QuizPage() {
             </div>
           </div>
         )}
-      </div>
+      </main>
 
       {/* Submit confirmation dialog */}
       <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>

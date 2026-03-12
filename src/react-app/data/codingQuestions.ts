@@ -6,6 +6,7 @@ export interface CodingQuestion {
     constraints: string[];
     starterCode: Record<string, string>;
     testCases: { input: string; expectedOutput: string }[];
+    hiddenTestCases?: { input: string; expectedOutput: string }[];
     difficulty: "Easy" | "Medium" | "Hard";
 }
 
@@ -408,6 +409,16 @@ const door3Questions: CodingQuestion[] = [
                 expectedOutput: "3",
             },
         ],
+        hiddenTestCases: [
+            {
+                input: '[["0","0","0"],["0","0","0"],["0","0","0"]]',
+                expectedOutput: "0",
+            },
+            {
+                input: '[["1","0","1"],["0","1","0"],["1","0","1"]]',
+                expectedOutput: "5",
+            },
+        ],
         starterCode: {
             python: `def num_islands(grid):
     # Write your solution here (DFS/BFS)
@@ -455,6 +466,10 @@ int main() { }`,
             { input: "[[0,1],[1,0]]", expectedOutput: "2" },
             { input: "[[0,0,0],[1,1,0],[1,1,0]]", expectedOutput: "4" },
             { input: "[[1,0,0],[1,1,0],[1,1,0]]", expectedOutput: "-1" },
+        ],
+        hiddenTestCases: [
+            { input: "[[0]]", expectedOutput: "1" },
+            { input: "[[0,0],[0,0]]", expectedOutput: "2" },
         ],
         starterCode: {
             python: `from collections import deque
@@ -510,6 +525,9 @@ int main() { }`,
             { input: "[[2,4],[1,3],[2,4],[1,3]]", expectedOutput: "[[2,4],[1,3],[2,4],[1,3]]" },
             { input: "[[2],[1]]", expectedOutput: "[[2],[1]]" },
             { input: "[[]]", expectedOutput: "[[]]" },
+        ],
+        hiddenTestCases: [
+            { input: "[[2,3],[1,3],[1,2]]", expectedOutput: "[[2,3],[1,3],[1,2]]" },
         ],
         starterCode: {
             python: `class Node:

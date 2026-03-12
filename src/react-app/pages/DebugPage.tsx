@@ -217,9 +217,15 @@ export default function DebugPage() {
           const codeToRun = buildCode(question, language, state.code, tc.input);
           console.log(`[Test Case ${state.testCases.indexOf(tc)}] Code to run:`, codeToRun);
           const result = await runCode(language, codeToRun, tc.input);
+          const normalize = (s: string) => (s || "").trim().toLowerCase();
+          const clean = (s: string) => normalize(s).replace(/\s+/g, "");
+
+          const actualNorm = normalize(result.output);
+          const expectedNorm = normalize(tc.expectedOutput);
+
           const passed =
             !result.isError &&
-            result.output.trim().toLowerCase() === tc.expectedOutput.trim().toLowerCase();
+            (actualNorm === expectedNorm || clean(result.output) === clean(tc.expectedOutput));
           return {
             actualOutput: result.output,
             status: (result.isError ? "error" : passed ? "passed" : "failed") as TCStatus,
@@ -241,6 +247,7 @@ export default function DebugPage() {
 
     setQuestionStates((prev) => {
       const next = [...prev];
+      // Use captured qIdx to ensure we update the correct question state
       const tcs = (next[qIdx].testCases ?? []).map((tc, i) => ({
         ...tc,
         actualOutput: results[i]?.actualOutput ?? "",
@@ -319,12 +326,12 @@ export default function DebugPage() {
   // ── Loading ────────────────────────────────────────────────────────
   if (!questionsLoaded || dbProgress === null || questions.length === 0)
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <main className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
           <p className="text-white/30 text-sm">{questionsLoaded && questions.length === 0 ? "No challenges found." : "Loading challenges…"}</p>
         </div>
-      </div>
+      </main>
     );
 
   // Safety guard for rendering
@@ -370,12 +377,12 @@ export default function DebugPage() {
   if (!hasStarted) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="fixed inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
           <div className="absolute top-1/4 -left-32 w-96 h-96 bg-chart-4/10 rounded-full blur-3xl animate-pulse" />
           <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse delay-1000" />
         </div>
 
-        <div className="relative z-10 max-w-2xl mx-auto px-4 py-16">
+        <main className="relative z-10 max-w-2xl mx-auto px-4 py-16">
           <Button
             variant="ghost"
             onClick={() => navigate("/")}
@@ -418,7 +425,7 @@ export default function DebugPage() {
               Start Debug Challenge
             </Button>
           </div>
-        </div>
+        </main>
       </div>
     );
   }
@@ -429,12 +436,12 @@ export default function DebugPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div className="absolute top-1/4 -left-32 w-96 h-96 bg-chart-4/10 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse delay-1000" />
       </div>
 
-      <div className="relative z-10 max-w-6xl mx-auto px-4 py-8">
+      <main className="relative z-10 max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
         <header className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -839,7 +846,7 @@ export default function DebugPage() {
             </div>
           </div>
         )}
-      </div>
+      </main>
 
       <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
         <DialogContent>
