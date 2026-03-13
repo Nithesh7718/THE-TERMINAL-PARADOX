@@ -430,6 +430,14 @@ export default function AdminDashboard() {
                                     </svg>
                                 </div>
                                 <span className="text-violet-400 text-sm font-bold">{user.score}%</span>
+                                <div className={cn(
+                                    "px-2 py-0.5 rounded text-[10px] font-bold border",
+                                    (user.tabSwitches || 0) > 3 
+                                        ? "bg-red-500/20 text-red-400 border-red-500/30 animate-pulse" 
+                                        : "bg-white/5 text-white/30 border-white/10"
+                                )}>
+                                    {user.tabSwitches || 0} 🛡️
+                                </div>
                             </div>
                         </div>
                     ))}

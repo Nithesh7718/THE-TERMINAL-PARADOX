@@ -20,6 +20,7 @@ import AdminDashboard from "@/react-app/pages/admin/AdminDashboard";
 import AdminUsers from "@/react-app/pages/admin/AdminUsers";
 import AdminLeaderboard from "@/react-app/pages/admin/AdminLeaderboard";
 import QuestionBank from "@/react-app/pages/admin/QuestionBank";
+import CheatingDetector from "@/react-app/components/CheatingDetector";
 
 // Auth + state helpers
 import { getUserSession } from "@/react-app/pages/Login";
@@ -87,6 +88,7 @@ export default function App() {
   return (
     <Router>
       <Toaster theme="dark" position="top-right" richColors closeButton />
+      <CheatingDetector />
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
 

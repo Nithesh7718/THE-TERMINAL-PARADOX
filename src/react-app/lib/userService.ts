@@ -16,6 +16,7 @@ export interface FSUser {
     lastActive: string;
     status: "active" | "inactive";
     role: "participant";
+    tabSwitches?: number; // Count of times user left the browser tab
     createdAt?: unknown;
 }
 
@@ -132,4 +133,21 @@ export function subscribeToUser(email: string, callback: (user: FSUser | null) =
             callback(null);
         }
     });
+}
+
+/** Track a tab switch (potential cheating) */
+export async function trackTabSwitch(email: string): Promise<void> {
+    const id = emailToId(email);
+    const ref = doc(USERS_COL, id);
+    try {
+        await runTransaction(db, async (transaction) => {
+            const snap = await transaction.get(ref);
+            if (!snap.exists()) return;
+            const current = snap.data() as FSUser;
+            transaction.update(ref, {
+                tabSwitches: (current.tabSwitches || 0) + 1,
+                lastActive: new Date().toISOString()
+            });
+        });
+    } catch (e) { console.error("Tab switch tracking failed", e); }
 }

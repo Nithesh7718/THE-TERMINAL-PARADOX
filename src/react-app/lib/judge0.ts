@@ -1,79 +1,61 @@
-// Judge0 CE — free public code execution API
-// Docs: https://ce.judge0.com/
+// Piston API — high-performance, free public code execution engine
+// Docs: https://github.com/engineer-man/piston
+const PISTON_BASE = "https://emkc.org/api/v2/piston";
 
-const JUDGE0_BASE = "https://ce.judge0.com";
-
-// Language IDs for Judge0 CE
-export const JUDGE0_LANGUAGE_IDS: Record<string, number> = {
-    python: 71,      // Python 3.8.1
-    javascript: 63,  // Node.js 12.14.0
-    java: 62,        // OpenJDK 13.0.1
-    c: 50,           // C GCC 9.2.0
-    cpp: 54,         // C++ GCC 9.2.0
+// Language Config for Piston
+export const PISTON_LANG_CONFIG: Record<string, { language: string; version: string }> = {
+    python: { language: "python", version: "3.10.0" },
+    javascript: { language: "javascript", version: "18.15.0" },
+    java: { language: "java", version: "15.0.2" },
+    c: { language: "c", version: "10.2.0" },
+    cpp: { language: "cpp", version: "10.2.0" },
 };
-
-// Judge0 status IDs
-const STATUS: Record<number, string> = {
-    1: "In Queue",
-    2: "Processing",
-    3: "Accepted",
-    4: "Wrong Answer",
-    5: "Time Limit Exceeded",
-    6: "Compilation Error",
-    7: "Runtime Error (SIGSEGV)",
-    8: "Runtime Error (SIGXFSZ)",
-    9: "Runtime Error (SIGFPE)",
-    10: "Runtime Error (SIGABRT)",
-    11: "Runtime Error (NZEC)",
-    12: "Runtime Error (Other)",
-    13: "Internal Error",
-    14: "Exec Format Error",
-};
-
-export interface Judge0Result {
-    stdout: string | null;
-    stderr: string | null;
-    compile_output: string | null;
-    status: { id: number; description: string };
-    time: string | null;
-    memory: number | null;
-}
 
 export interface ExecutionResult {
-    output: string;   // final usable text (trimmed stdout or error description)
+    output: string;   // final usable text (stdout + stderr)
     isError: boolean;
     statusId: number;
     statusLabel: string;
+}
+
+interface PistonResult {
+    language: string;
+    version: string;
+    run: {
+        stdout: string;
+        stderr: string;
+        code: number;
+        signal: string | null;
+        output: string;
+    };
 }
 
 // ── Retry helper ─────────────────────────────────────────────────────
 async function fetchWithRetry(
     url: string,
     opts: RequestInit,
-    retries = 5,
+    retries = 3,
     backoffMs = 1000
 ): Promise<Response> {
     for (let attempt = 0; attempt < retries; attempt++) {
         const res = await fetch(url, opts);
+        // Piston usually returns 200 or 429/503.
         if (res.status !== 429 && res.status !== 503) return res;
         if (attempt < retries - 1) {
-            // Jitter: randomise ±30% of the backoff so 30 simultaneous retries
-            // don't all fire at exactly the same millisecond ("retry storm").
             const base = backoffMs * (attempt + 1);
-            const jitter = base * 0.3 * (Math.random() * 2 - 1); // ±30%
+            const jitter = base * 0.3 * (Math.random() * 2 - 1);
             await new Promise(r => setTimeout(r, Math.round(base + jitter)));
         }
     }
-    throw new Error("Judge0 is overloaded. Please wait a moment and try again.");
+    throw new Error("Execution server is overloaded. Please wait and try again.");
 }
 
 // ── Session-storage cache (key = language+code+stdin hash) ───────────
 function cacheKey(language: string, code: string, stdin: string) {
-    // Simple djb2-style hash — good enough for sessionStorage keys
     let h = 5381;
     const s = `${language}||${code}||${stdin}`;
     for (let i = 0; i < s.length; i++) h = ((h << 5) + h) ^ s.charCodeAt(i);
-    return `j0_${(h >>> 0).toString(36)}`;
+    return `pist_${(h >>> 0).toString(36)}`;
 }
 
 function readCache(key: string): ExecutionResult | null {
@@ -90,8 +72,7 @@ function writeCache(key: string, val: ExecutionResult) {
 // ── Public API ────────────────────────────────────────────────────────
 
 /**
- * Run source code via Judge0. Results are cached in sessionStorage so
- * identical (language, code, stdin) tuples don't hit the network twice.
+ * Run source code via Piston. Results are cached in sessionStorage.
  */
 export async function runCode(
     languageKey: string,
@@ -102,79 +83,39 @@ export async function runCode(
     const cached = readCache(key);
     if (cached) return cached;
 
-    const languageId = JUDGE0_LANGUAGE_IDS[languageKey];
-    if (!languageId) throw new Error(`Unsupported language: ${languageKey}`);
+    const config = PISTON_LANG_CONFIG[languageKey];
+    if (!config) throw new Error(`Unsupported language: ${languageKey}`);
 
     const response = await fetchWithRetry(
-        `${JUDGE0_BASE}/submissions?wait=true&base64_encoded=false`,
+        `${PISTON_BASE}/execute`,
         {
             method: "POST",
-            headers: { "Content-Type": "application/json", Accept: "application/json" },
-            body: JSON.stringify({ source_code: sourceCode, language_id: languageId, stdin }),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                language: config.language,
+                version: config.version,
+                files: [{ content: sourceCode }],
+                stdin,
+            }),
         }
     );
 
     if (!response.ok) {
         const text = await response.text();
-        throw new Error(`Judge0 API error ${response.status}: ${text}`);
+        throw new Error(`Execution error ${response.status}: ${text}`);
     }
 
-    const raw = (await response.json()) as Judge0Result;
-    const result = extractOutput(raw);
+    const raw = (await response.json()) as PistonResult;
+    
+    // Normalize result to match our ExecutionResult interface
+    const isError = raw.run.code !== 0 || !!raw.run.stderr;
+    const result: ExecutionResult = {
+        output: raw.run.output.trim(),
+        isError: isError,
+        statusId: raw.run.code === 0 ? 3 : 11, // Map to Judge0-like status IDs for compatibility
+        statusLabel: raw.run.code === 0 ? "Accepted" : "Runtime Error",
+    };
 
     writeCache(key, result);
     return result;
-}
-
-/**
- * Map a raw Judge0 result to a clean ExecutionResult.
- * All known status IDs are handled explicitly.
- */
-export function extractOutput(result: Judge0Result): ExecutionResult {
-    const id = result.status.id;
-    const label = STATUS[id] ?? result.status.description;
-
-    if (id === 3) {
-        // Accepted — real stdout
-        return {
-            output: (result.stdout ?? "").trim(),
-            isError: false,
-            statusId: id,
-            statusLabel: label,
-        };
-    }
-
-    if (id === 5) {
-        return {
-            output: "⏱ Time Limit Exceeded — check for infinite loops",
-            isError: true,
-            statusId: id,
-            statusLabel: label,
-        };
-    }
-
-    if (id === 6) {
-        const msg = (result.compile_output ?? "").trim();
-        return {
-            output: msg ? `Compile Error:\n${msg}` : "Compilation failed.",
-            isError: true,
-            statusId: id,
-            statusLabel: label,
-        };
-    }
-
-    // Any runtime error (7–12)
-    if (id >= 7 && id <= 12) {
-        const msg = (result.stderr ?? "").trim();
-        return {
-            output: msg ? `${label}:\n${msg}` : label,
-            isError: true,
-            statusId: id,
-            statusLabel: label,
-        };
-    }
-
-    // Fallback — include stderr / stdout if present
-    const fallback = (result.stderr ?? result.stdout ?? label).trim();
-    return { output: fallback || label, isError: true, statusId: id, statusLabel: label };
 }
