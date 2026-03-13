@@ -1,121 +1,199 @@
-// Piston API — high-performance, free public code execution engine
-// Docs: https://github.com/engineer-man/piston
-const PISTON_BASE = "https://emkc.org/api/v2/piston";
+/**
+ * Code Execution Engine
+ * Primary: OnlineCompiler.io (1 Million Free Runs/Month) - Reliable for 60+ users
+ * Fallback 1: Judge0 Public CE
+ * Fallback 2: Wandbox
+ */
 
-// Language Config for Piston
-export const PISTON_LANG_CONFIG: Record<string, { language: string; version: string }> = {
-    python: { language: "python", version: "3.10.0" },
-    javascript: { language: "javascript", version: "18.15.0" },
-    java: { language: "java", version: "15.0.2" },
-    c: { language: "c", version: "10.2.0" },
-    cpp: { language: "cpp", version: "10.2.0" },
+const OC_API_KEY = "oc_44g72meh6_44g72meht_b0a22a1c4eb3543b95396844cf1b93d8c4ad596dd9d55a2a";
+
+const OC_LANG_CONFIG: Record<string, string> = {
+    python: "Py",
+    javascript: "Ty", // Deno/Node/TypeScript
+    java: "Ja",
+    c: "C",
+    cpp: "C+",
+};
+
+const JUDGE0_LANG_CONFIG: Record<string, number> = {
+    python: 100,
+    javascript: 102,
+    java: 91,
+    c: 103,
+    cpp: 105,
+};
+
+const WANDBOX_LANG_CONFIG: Record<string, string> = {
+    python: "cpython-head",
+    javascript: "nodejs-head",
+    java: "java-head",
+    c: "gcc-head-c",
+    cpp: "gcc-head",
 };
 
 export interface ExecutionResult {
-    output: string;   // final usable text (stdout + stderr)
+    output: string;
     isError: boolean;
     statusId: number;
     statusLabel: string;
 }
 
-interface PistonResult {
-    language: string;
-    version: string;
-    run: {
-        stdout: string;
-        stderr: string;
-        code: number;
-        signal: string | null;
-        output: string;
-    };
-}
+// ── Shared Helpers ──────────────────────────────────────────────────
 
-// ── Retry helper ─────────────────────────────────────────────────────
-async function fetchWithRetry(
-    url: string,
-    opts: RequestInit,
-    retries = 3,
-    backoffMs = 1000
-): Promise<Response> {
-    for (let attempt = 0; attempt < retries; attempt++) {
-        const res = await fetch(url, opts);
-        // Piston usually returns 200 or 429/503.
-        if (res.status !== 429 && res.status !== 503) return res;
-        if (attempt < retries - 1) {
-            const base = backoffMs * (attempt + 1);
-            const jitter = base * 0.3 * (Math.random() * 2 - 1);
-            await new Promise(r => setTimeout(r, Math.round(base + jitter)));
-        }
-    }
-    throw new Error("Execution server is overloaded. Please wait and try again.");
-}
-
-// ── Session-storage cache (key = language+code+stdin hash) ───────────
-function cacheKey(language: string, code: string, stdin: string) {
-    let h = 5381;
-    const s = `${language}||${code}||${stdin}`;
-    for (let i = 0; i < s.length; i++) h = ((h << 5) + h) ^ s.charCodeAt(i);
-    return `pist_${(h >>> 0).toString(36)}`;
-}
-
-function readCache(key: string): ExecutionResult | null {
+async function fetchWithTimeout(url: string, opts: RequestInit, timeout = 12000): Promise<Response> {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
     try {
-        const raw = sessionStorage.getItem(key);
-        return raw ? (JSON.parse(raw) as ExecutionResult) : null;
-    } catch { return null; }
+        const res = await fetch(url, { ...opts, signal: controller.signal });
+        clearTimeout(id);
+        return res;
+    } catch (e) {
+        clearTimeout(id);
+        throw e;
+    }
 }
 
-function writeCache(key: string, val: ExecutionResult) {
-    try { sessionStorage.setItem(key, JSON.stringify(val)); } catch { /* quota */ }
+function cacheKey(service: string, language: string, code: string, stdin: string) {
+    let h = 5381;
+    const s = `${service}||${language}||${code}||${stdin}`;
+    for (let i = 0; i < s.length; i++) h = ((h << 5) + h) ^ s.charCodeAt(i);
+    return `run_${(h >>> 0).toString(36)}`;
+}
+
+// ── OnlineCompiler.io Adapter (Primary) ─────────────────────────────
+
+async function runOnlineCompiler(language: string, code: string, stdin: string): Promise<ExecutionResult | null> {
+    try {
+        const compiler = OC_LANG_CONFIG[language];
+        if (!compiler) return null;
+
+        const response = await fetchWithTimeout("https://api.onlinecompiler.io/api/run-code/", {
+            method: "POST",
+            headers: { 
+                "Content-Type": "application/json",
+                "Authorization": OC_API_KEY
+            },
+            body: JSON.stringify({
+                compiler,
+                code,
+                input: stdin,
+            }),
+        });
+
+        if (!response.ok) {
+            const err = await response.text();
+            console.warn("OnlineCompiler error", response.status, err);
+            return null;
+        }
+
+        const data = await response.json();
+        // OnlineCompiler usually returns { output: "...", error: "..." }
+        const isError = !!data.error;
+        return {
+            output: (data.output || "") + (data.error || ""),
+            isError: isError,
+            statusId: isError ? 11 : 3,
+            statusLabel: isError ? "Runtime Error" : "Accepted",
+        };
+    } catch (e) {
+        console.error("OnlineCompiler failed", e);
+        return null;
+    }
+}
+
+// ── Judge0 Adapter (Secondary) ───────────────────────────────────────
+
+async function runJudge0(language: string, code: string, stdin: string): Promise<ExecutionResult | null> {
+    try {
+        const langId = JUDGE0_LANG_CONFIG[language];
+        if (!langId) return null;
+
+        const response = await fetchWithTimeout("https://ce.judge0.com/submissions?wait=true", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                source_code: code,
+                language_id: langId,
+                stdin,
+            }),
+        });
+
+        if (!response.ok) return null;
+        const data = await response.json();
+        return {
+            output: (data.stdout || "") + (data.stderr || "") + (data.compile_output || ""),
+            isError: data.status.id !== 3,
+            statusId: data.status.id,
+            statusLabel: data.status.description,
+        };
+    } catch (e) { return null; }
+}
+
+// ── Wandbox Adapter (Tertiary) ───────────────────────────────────────
+
+async function runWandbox(language: string, code: string, stdin: string): Promise<ExecutionResult | null> {
+    try {
+        const compiler = WANDBOX_LANG_CONFIG[language];
+        if (!compiler) return null;
+
+        const response = await fetchWithTimeout("https://wandbox.org/api/compile.json", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                compiler,
+                code,
+                stdin,
+            }),
+        });
+
+        if (!response.ok) return null;
+        const data = await response.json();
+        const isError = data.status !== "0";
+        return {
+            output: (data.program_output || "") + (data.program_error || "") + (data.compiler_error || ""),
+            isError: isError,
+            statusId: isError ? 11 : 3,
+            statusLabel: isError ? "Runtime Error" : "Accepted",
+        };
+    } catch (e) { return null; }
 }
 
 // ── Public API ────────────────────────────────────────────────────────
 
 /**
- * Run source code via Piston. Results are cached in sessionStorage.
+ * Multi-Engine Execution Strategy (v3)
+ * 1. OnlineCompiler (Highest limit, best for 60 users)
+ * 2. Judge0 (Fast backup)
+ * 3. Wandbox (Final stable backup)
  */
 export async function runCode(
     languageKey: string,
     sourceCode: string,
     stdin: string = ""
 ): Promise<ExecutionResult> {
-    const key = cacheKey(languageKey, sourceCode, stdin);
-    const cached = readCache(key);
-    if (cached) return cached;
+    const key = cacheKey("v3", languageKey, sourceCode, stdin);
+    const cached = sessionStorage.getItem(key);
+    if (cached) return JSON.parse(cached);
 
-    const config = PISTON_LANG_CONFIG[languageKey];
-    if (!config) throw new Error(`Unsupported language: ${languageKey}`);
+    // Try Primary
+    let result = await runOnlineCompiler(languageKey, sourceCode, stdin);
 
-    const response = await fetchWithRetry(
-        `${PISTON_BASE}/execute`,
-        {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                language: config.language,
-                version: config.version,
-                files: [{ content: sourceCode }],
-                stdin,
-            }),
-        }
-    );
-
-    if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`Execution error ${response.status}: ${text}`);
+    // Try Secondary
+    if (!result) {
+        console.warn("Primary failed. Attempting Judge0...");
+        result = await runJudge0(languageKey, sourceCode, stdin);
     }
 
-    const raw = (await response.json()) as PistonResult;
-    
-    // Normalize result to match our ExecutionResult interface
-    const isError = raw.run.code !== 0 || !!raw.run.stderr;
-    const result: ExecutionResult = {
-        output: raw.run.output.trim(),
-        isError: isError,
-        statusId: raw.run.code === 0 ? 3 : 11, // Map to Judge0-like status IDs for compatibility
-        statusLabel: raw.run.code === 0 ? "Accepted" : "Runtime Error",
-    };
+    // Try Tertiary
+    if (!result) {
+        console.warn("Secondary failed. Attempting Wandbox...");
+        result = await runWandbox(languageKey, sourceCode, stdin);
+    }
 
-    writeCache(key, result);
+    if (!result) {
+        throw new Error("All code execution engines are currently offline. Please wait 10 seconds and try again.");
+    }
+
+    sessionStorage.setItem(key, JSON.stringify(result));
     return result;
 }
