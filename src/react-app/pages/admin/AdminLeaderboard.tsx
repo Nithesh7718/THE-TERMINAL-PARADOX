@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Trophy, Medal, Star, Circle } from "lucide-react";
+import { Trophy, Medal, Star, Circle, Printer } from "lucide-react";
 import { subscribeToUsers, type FSUser } from "@/react-app/lib/userService";
 
 const MEDALS: Record<number, { icon: React.ElementType; borderClass: string; textClass: string; label: string }> = {
@@ -11,7 +11,7 @@ const MEDALS: Record<number, { icon: React.ElementType; borderClass: string; tex
 function ScoreBar({ score }: { score: number }) {
     const W = 200, H = 14;
     return (
-        <svg width={W} height={H} className="hidden sm:block" aria-hidden="true">
+        <svg width={W} height={H} className="hidden sm:block no-print" aria-hidden="true">
             <rect x={0} y={3} width={W} height={H - 6} rx={4} fill="rgba(255,255,255,0.05)" />
             <rect x={0} y={3} width={(score / 100) * W} height={H - 6} rx={4}
                 fill="url(#sb)" />
@@ -34,17 +34,44 @@ export default function AdminLeaderboard() {
     }, []);
 
     const top3 = users.slice(0, 3);
+    const dateStr = new Date().toLocaleDateString('en-IN', { dateStyle: 'long' });
 
     return (
-        <div className="space-y-8">
-            <div>
-                <h2 className="text-white text-2xl font-bold">Live Leaderboard</h2>
-                <p className="text-white/65 text-sm mt-1">{users.length} participants ranked by score — updates in real-time</p>
+        <div className="space-y-8 print:p-0">
+            <style dangerouslySetInnerHTML={{ __html: `
+                @media print {
+                    body { background: white !important; color: black !important; }
+                    .no-print { display: none !important; }
+                    .bg-[#0f0f1a] { background: transparent !important; border: 1px solid #eee !important; }
+                    .divide-white\\/3 { divide-color: #eee !important; }
+                    .text-white { color: #111 !important; }
+                    .text-white\\/65 { color: #666 !important; }
+                    .text-white\\/55 { color: #888 !important; }
+                    .text-white\\/90 { color: #222 !important; }
+                    .rounded-2xl { border-radius: 0 !important; }
+                    .podium-card { background: #f9f9f9 !important; border: 1px solid #ddd !important; }
+                }
+            `}} />
+
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-white text-2xl font-bold print:text-black">Live Leaderboard</h2>
+                    <p className="text-white/65 text-sm mt-1 print:text-gray-600">
+                        {users.length} participants ranked by score — {dateStr}
+                    </p>
+                </div>
+                <button 
+                    onClick={() => window.print()}
+                    className="no-print flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-white hover:bg-white/10 rounded-xl transition-all text-sm font-semibold"
+                >
+                    <Printer className="w-4 h-4" />
+                    Download PDF
+                </button>
             </div>
 
             {/* Podium */}
             {top3.length >= 1 && (
-                <div className="grid grid-cols-3 gap-4 max-w-xl mx-auto">
+                <div className="grid grid-cols-3 gap-4 max-w-xl mx-auto podium-card rounded-2xl p-6">
                     {[1, 0, 2].map((rankIdx) => {
                         const u = top3[rankIdx];
                         if (!u) return <div key={rankIdx} />;
@@ -56,7 +83,7 @@ export default function AdminLeaderboard() {
                                     {u.name.charAt(0).toUpperCase()}
                                 </div>
                                 <m.icon className={`w-5 h-5 ${m.textClass}`} />
-                                <p className="text-white/80 text-xs font-semibold text-center truncate w-full px-1">{u.name}</p>
+                                <p className="text-white/80 text-xs font-semibold text-center truncate w-full px-1 print:text-black">{u.name}</p>
                                 <p className={`text-sm font-black ${m.textClass}`}>{u.score}%</p>
                             </div>
                         );
@@ -67,7 +94,7 @@ export default function AdminLeaderboard() {
             <div className="bg-[#0f0f1a] border border-white/5 rounded-2xl overflow-hidden">
                 <div className="px-6 py-4 border-b border-white/5 flex items-center gap-2">
                     <Star className="w-4 h-4 text-amber-400" />
-                    <h3 className="text-white font-semibold text-sm">Full Rankings</h3>
+                    <h3 className="text-white font-semibold text-sm print:text-black">Full Rankings</h3>
                 </div>
                 <div className="divide-y divide-white/3">
                     {users.map((u, i) => {
@@ -77,14 +104,14 @@ export default function AdminLeaderboard() {
                                 <div className="w-7 flex items-center justify-center shrink-0">
                                     {m ? <m.icon className={`w-4 h-4 ${m.textClass}`} /> : <span className="text-white/55 text-sm font-bold">#{i + 1}</span>}
                                 </div>
-                                <div className="w-9 h-9 rounded-full bg-violet-500/15 border border-violet-500/20 flex items-center justify-center text-sm font-black text-violet-300 shrink-0">
+                                <div className="w-9 h-9 rounded-full bg-violet-500/15 border border-violet-500/20 flex items-center justify-center text-sm font-black text-violet-300 shrink-0 print:border-violet-500">
                                     {u.name.charAt(0).toUpperCase()}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-white/90 text-sm font-semibold truncate">{u.name}</p>
+                                    <p className="text-white/90 text-sm font-semibold truncate print:text-black">{u.name}</p>
                                     <div className="flex items-center gap-3 mt-0.5">
-                                        <p className="text-white/55 text-xs">Round {u.roundsCompleted}/3</p>
-                                        <div className="flex gap-1">
+                                        <p className="text-white/55 text-xs print:text-gray-500">Round {u.roundsCompleted}/3</p>
+                                        <div className="flex gap-1 no-print">
                                             {[1, 2, 3].map(r => (
                                                 <Circle key={r} className="w-2 h-2" fill={r <= u.roundsCompleted ? "#8b5cf6" : "transparent"}
                                                     stroke={r <= u.roundsCompleted ? "#8b5cf6" : "rgba(255,255,255,0.15)"} />
@@ -94,9 +121,9 @@ export default function AdminLeaderboard() {
                                 </div>
                                 <ScoreBar score={u.score} />
                                 <div className="text-right shrink-0">
-                                    <p className="text-white font-black text-base">{u.score}<span className="text-white/55 text-xs">%</span></p>
+                                    <p className="text-white font-black text-base print:text-black">{u.score}<span className="text-white/55 text-xs print:text-gray-600">%</span></p>
                                 </div>
-                                <div className={`w-2 h-2 rounded-full shrink-0 ${u.status === "active" ? "bg-emerald-400 animate-pulse" : "bg-white/15"}`} />
+                                <div className={`w-2 h-2 rounded-full shrink-0 no-print ${u.status === "active" ? "bg-emerald-400 animate-pulse" : "bg-white/15"}`} />
                             </div>
                         );
                     })}
