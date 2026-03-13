@@ -1,19 +1,11 @@
 /**
  * Code Execution Engine
- * Primary: OnlineCompiler.io (1 Million Free Runs/Month) - Reliable for 60+ users
- * Fallback 1: Judge0 Public CE
- * Fallback 2: Wandbox
+ * Primary: Judge0 Public CE (Confirmed network compatible)
+ * Backup 1: OneCompiler.com (Direct API)
+ * Backup 2: Wandbox
  */
 
 const OC_API_KEY = "oc_44g72meh6_44g72meht_b0a22a1c4eb3543b95396844cf1b93d8c4ad596dd9d55a2a";
-
-const OC_LANG_CONFIG: Record<string, string> = {
-    python: "Py",
-    javascript: "Ty", // Deno/Node/TypeScript
-    java: "Ja",
-    c: "C",
-    cpp: "C+",
-};
 
 const JUDGE0_LANG_CONFIG: Record<string, number> = {
     python: 100,
@@ -60,43 +52,60 @@ function cacheKey(service: string, language: string, code: string, stdin: string
     return `run_${(h >>> 0).toString(36)}`;
 }
 
-// ── OnlineCompiler.io Adapter (Primary) ─────────────────────────────
+// ── OneCompiler.com Adapter (Primary Backup) ─────────────────────────
 
-async function runOnlineCompiler(language: string, code: string, stdin: string): Promise<ExecutionResult | null> {
+async function runOneCompiler(language: string, code: string, stdin: string): Promise<ExecutionResult | null> {
     try {
-        const compiler = OC_LANG_CONFIG[language];
-        if (!compiler) return null;
+        // Map to OneCompiler language names
+        const langMap: Record<string, string> = {
+            python: "python",
+            java: "java",
+            javascript: "javascript",
+            c: "c",
+            cpp: "cpp"
+        };
+        const oneLang = langMap[language];
+        if (!oneLang) return null;
 
-        const response = await fetchWithTimeout("https://api.onlinecompiler.io/api/run-code/", {
+        // OneCompiler requires specific filenames for some languages
+        const fileExtMap: Record<string, string> = {
+            python: "main.py",
+            java: "Main.java",
+            javascript: "main.js",
+            c: "main.c",
+            cpp: "main.cpp"
+        };
+
+        const response = await fetchWithTimeout("https://api.onecompiler.com/v1/run", {
             method: "POST",
             headers: { 
                 "Content-Type": "application/json",
-                "Authorization": OC_API_KEY
+                "X-API-Key": OC_API_KEY
             },
             body: JSON.stringify({
-                compiler,
-                code,
-                input: stdin,
+                language: oneLang,
+                stdin: stdin,
+                files: [
+                    {
+                        name: fileExtMap[language] || "main",
+                        content: code
+                    }
+                ]
             }),
         });
 
-        if (!response.ok) {
-            const err = await response.text();
-            console.warn("OnlineCompiler error", response.status, err);
-            return null;
-        }
+        if (!response.ok) return null;
 
         const data = await response.json();
-        // OnlineCompiler usually returns { output: "...", error: "..." }
-        const isError = !!data.error;
+        const isError = !!data.exception || (data.stderr && data.stderr.length > 0);
+        
         return {
-            output: (data.output || "") + (data.error || ""),
-            isError: isError,
+            output: (data.stdout || "") + (data.stderr || "") + (data.exception || ""),
+            isError: !!isError,
             statusId: isError ? 11 : 3,
             statusLabel: isError ? "Runtime Error" : "Accepted",
         };
     } catch (e) {
-        console.error("OnlineCompiler failed", e);
         return null;
     }
 }
@@ -161,37 +170,37 @@ async function runWandbox(language: string, code: string, stdin: string): Promis
 // ── Public API ────────────────────────────────────────────────────────
 
 /**
- * Multi-Engine Execution Strategy (v3)
- * 1. OnlineCompiler (Highest limit, best for 60 users)
- * 2. Judge0 (Fast backup)
- * 3. Wandbox (Final stable backup)
+ * Multi-Engine Execution Strategy (v5 - OneCompiler Fix)
+ * 1. Judge0 (Network Safe)
+ * 2. OneCompiler (High Limit Backup)
+ * 3. Wandbox (Stable fallback)
  */
 export async function runCode(
     languageKey: string,
     sourceCode: string,
     stdin: string = ""
 ): Promise<ExecutionResult> {
-    const key = cacheKey("v3", languageKey, sourceCode, stdin);
+    const key = cacheKey("v5", languageKey, sourceCode, stdin);
     const cached = sessionStorage.getItem(key);
     if (cached) return JSON.parse(cached);
 
-    // Try Primary
-    let result = await runOnlineCompiler(languageKey, sourceCode, stdin);
+    // Attempt 1: Judge0
+    let result = await runJudge0(languageKey, sourceCode, stdin);
 
-    // Try Secondary
+    // Attempt 2: OneCompiler (High limit)
     if (!result) {
-        console.warn("Primary failed. Attempting Judge0...");
-        result = await runJudge0(languageKey, sourceCode, stdin);
+        console.warn("Judge0 failed. Attempting OneCompiler...");
+        result = await runOneCompiler(languageKey, sourceCode, stdin);
     }
 
-    // Try Tertiary
+    // Attempt 3: Wandbox
     if (!result) {
         console.warn("Secondary failed. Attempting Wandbox...");
         result = await runWandbox(languageKey, sourceCode, stdin);
     }
 
     if (!result) {
-        throw new Error("All code execution engines are currently offline. Please wait 10 seconds and try again.");
+        throw new Error("All code execution engines are currently offline. Please try again.");
     }
 
     sessionStorage.setItem(key, JSON.stringify(result));
