@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { Users, Trophy, Activity, TrendingUp, Star, PlayCircle, StopCircle, Download, ShieldCheck } from "lucide-react";
 import { subscribeToUsers, type FSUser } from "@/react-app/lib/userService";
-import { subscribeToGameState, startGame, stopGame, sendBroadcast, setPassingGrades, setSEBRequired, type GameState } from "@/react-app/lib/gameState";
+import { subscribeToGameState, startGame, stopGame, sendBroadcast, setPassingGrades, setRoundTimings, setSEBRequired, type GameState } from "@/react-app/lib/gameState";
 import { toast } from "sonner";
-import { Megaphone } from "lucide-react";
+import { Megaphone, Clock } from "lucide-react";
 import { downloadSEBConfig } from "@/react-app/lib/sebDetection";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/react-app/lib/firebase";
@@ -80,7 +80,9 @@ export default function AdminDashboard() {
     const [broadcastInput, setBroadcastInput] = useState("");
     const [broadcastSending, setBroadcastSending] = useState(false);
     const [passGrades, setPassGrades] = useState({ 1: 50, 2: 50, 3: 50 });
+    const [roundTimings, setRoundTimingsState] = useState({ 1: 15, 2: 15, 3: 30 });
     const [savingGrades, setSavingGrades] = useState(false);
+    const [savingTimings, setSavingTimings] = useState(false);
     const [sebToggling, setSebToggling] = useState(false);
 
     // Real-time users from Firestore
@@ -95,6 +97,9 @@ export default function AdminDashboard() {
             setGameState(state);
             if (state.passingGrades) {
                 setPassGrades(state.passingGrades as { 1: number; 2: number; 3: number });
+            }
+            if (state.roundTimings) {
+                setRoundTimingsState(state.roundTimings as { 1: number; 2: number; 3: number });
             }
         });
         return unsub;
@@ -158,6 +163,18 @@ export default function AdminDashboard() {
             toast.error("Failed to update passing grades.");
         } finally {
             setSavingGrades(false);
+        }
+    };
+
+    const handleSaveTimings = async () => {
+        setSavingTimings(true);
+        try {
+            await setRoundTimings(roundTimings);
+            toast.success("Round timings updated for all participants!");
+        } catch {
+            toast.error("Failed to update round timings.");
+        } finally {
+            setSavingTimings(false);
         }
     };
 
@@ -309,6 +326,38 @@ export default function AdminDashboard() {
                     disabled={savingGrades}
                     className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-all disabled:opacity-60">
                     {savingGrades ? "Saving..." : "Save Passing Grades"}
+                </button>
+            </div>
+
+            {/* Round Timings Management */}
+            <div className="bg-[#0f0f1a] border border-white/5 rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-6">
+                    <Clock className="w-4 h-4 text-violet-400" />
+                    <h3 className="text-white font-semibold text-sm">Round Timings (Minutes)</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+                    {[1, 2, 3].map(r => (
+                        <div key={r}>
+                            <label htmlFor={`roundTiming-${r}`} className="block text-xs text-white/40 uppercase tracking-wider mb-2">Round {r} Duration</label>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    id={`roundTiming-${r}`}
+                                    type="number"
+                                    placeholder={r === 3 ? "30" : "15"}
+                                    value={roundTimings[r as 1 | 2 | 3]}
+                                    onChange={e => setRoundTimingsState(prev => ({ ...prev, [r]: parseInt(e.target.value) || 0 }))}
+                                    min="1" max="120"
+                                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-violet-500/50" />
+                                <span className="text-white/30 text-sm">min</span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <button
+                    onClick={handleSaveTimings}
+                    disabled={savingTimings}
+                    className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-all disabled:opacity-60">
+                    {savingTimings ? "Saving..." : "Save Round Timings"}
                 </button>
             </div>
 

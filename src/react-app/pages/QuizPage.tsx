@@ -28,7 +28,6 @@ import {
 
 import { subscribeToGameState, type GameState } from "@/react-app/lib/gameState";
 
-const QUIZ_TIME_MINUTES = 15;
 
 export default function QuizPage() {
   const { door } = useParams();
@@ -156,6 +155,8 @@ export default function QuizPage() {
   const answeredCount = answers.filter((a) => a !== null).length;
   const progress = (answeredCount / questions.length) * 100;
 
+  const roundDuration = gameState?.roundTimings?.[1] ?? 15;
+
   const question = questions[currentQuestion];
   const optionLabels = ["A", "B", "C", "D"];
 
@@ -220,7 +221,7 @@ export default function QuizPage() {
           </div>
           {!isSubmitted && (
             <Timer
-              initialMinutes={QUIZ_TIME_MINUTES}
+              initialMinutes={roundDuration}
               onTimeUp={handleTimeUp}
               storageKey={`quiz_d${doorNumber}`}
             />

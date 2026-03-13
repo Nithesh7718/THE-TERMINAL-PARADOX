@@ -36,7 +36,7 @@ import {
 import { subscribeToGameState, type GameState } from "@/react-app/lib/gameState";
 import { runCode } from "@/react-app/lib/judge0";
 
-const DEBUG_TIME_MINUTES = 15;
+
 
 // ── Variable injection helpers ────────────────────────────────────────
 /** Replace {0},{1},… in preamble template with space-split tokens from input */
@@ -325,6 +325,8 @@ export default function DebugPage() {
 
   const totalScore = computeFinalScore();
   const passed = totalScore >= passingGrade;
+
+  const roundDuration = gameState?.roundTimings?.[2] ?? 15;
   const question = questions[currentQuestion];
   const currentState = questionStates[currentQuestion];
 
@@ -412,7 +414,7 @@ export default function DebugPage() {
             <p className="text-muted-foreground">
               Fix the bugs in 5 coding challenges.
               <br />
-              You have 15 minutes. Score at least {passingGrade}% to advance.
+              You have {roundDuration} minutes. Score at least {passingGrade}% to advance.
             </p>
           </div>
 
@@ -469,7 +471,7 @@ export default function DebugPage() {
           </div>
           {!isSubmitted && (
             <Timer
-              initialMinutes={DEBUG_TIME_MINUTES}
+              initialMinutes={roundDuration}
               onTimeUp={handleTimeUp}
               storageKey={`debug_d${doorNumber}`}
             />

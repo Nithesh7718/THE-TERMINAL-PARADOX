@@ -13,6 +13,7 @@ export async function startGame(): Promise<void> {
             activeRound: 1,
             broadcastMessage: "",
             passingGrades: { 1: 50, 2: 50, 3: 50 },
+            roundTimings: { 1: 15, 2: 15, 3: 30 },
             sebRequired: true
         });
     } else {
@@ -45,11 +46,17 @@ export async function setPassingGrades(grades: Record<number, number>): Promise<
     await updateDoc(GAME_DOC, { passingGrades: grades });
 }
 
+/** Set time limits for each round (in minutes) */
+export async function setRoundTimings(timings: Record<number, number>): Promise<void> {
+    await updateDoc(GAME_DOC, { roundTimings: timings });
+}
+
 export interface GameState {
     started: boolean;
     broadcastMessage?: string;
     activeRound?: number;
     passingGrades?: Record<number, number>;
+    roundTimings?: Record<number, number>;
     sebRequired?: boolean;
 }
 
@@ -62,6 +69,7 @@ export function subscribeToGameState(callback: (state: GameState) => void): () =
             broadcastMessage: d?.broadcastMessage || "",
             activeRound: d?.activeRound ?? 1,
             passingGrades: d?.passingGrades || { 1: 50, 2: 50, 3: 50 },
+            roundTimings: d?.roundTimings || { 1: 15, 2: 15, 3: 30 },
             sebRequired: d?.sebRequired ?? true
         });
     });
@@ -76,6 +84,7 @@ export async function getGameState(): Promise<GameState> {
         broadcastMessage: d?.broadcastMessage || "",
         activeRound: d?.activeRound ?? 1,
         passingGrades: d?.passingGrades || { 1: 50, 2: 50, 3: 50 },
+        roundTimings: d?.roundTimings || { 1: 15, 2: 15, 3: 30 },
         sebRequired: d?.sebRequired ?? true
     };
 }

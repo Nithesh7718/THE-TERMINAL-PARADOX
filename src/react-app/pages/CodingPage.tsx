@@ -38,7 +38,7 @@ import {
 import { subscribeToGameState, type GameState } from "@/react-app/lib/gameState";
 import { runCode } from "@/react-app/lib/judge0";
 
-const CODING_TIME_MINUTES = 30;
+
 
 export default function CodingPage() {
     const { door } = useParams();
@@ -258,8 +258,14 @@ export default function CodingPage() {
         setIsRunning(false);
     };
 
-    // Passing grade from game state or fallback
     const passingGrade = gameState?.passingGrades?.[3] ?? 50;
+    const roundDuration = gameState?.roundTimings?.[3] ?? 30;
+
+    const calculateTotalScore = () => Math.round(
+        questionStates.reduce((sum, q) => sum + q.score, 0) / Math.max(questions.length, 1)
+    );
+    const totalScore = calculateTotalScore();
+    const passed = totalScore >= passingGrade;
 
     // Save progress immediately — called on submit AND time-up so back-button never loses data
     const saveProgress = useCallback(async (score: number) => {
@@ -299,10 +305,6 @@ export default function CodingPage() {
     // Proceed button — progress already saved, just navigate
     const handleContinueHome = () => navigate("/");
 
-    const totalScore = Math.round(
-        questionStates.reduce((sum, q) => sum + q.score, 0) / questions.length
-    );
-    const passed = totalScore >= passingGrade;
     const question = questions[currentQuestion];
     const currentState = questionStates[currentQuestion];
     const doorNames = ["Array Forge", "String Sanctum", "Graph Gateway"];
@@ -366,7 +368,7 @@ export default function CodingPage() {
                         <p className="text-muted-foreground">
                             Solve {questions.length} implementation challenges.
                             <br />
-                            You have 30 minutes. Score at least {passingGrade}% to conquer.
+                            You have {roundDuration} minutes. Score at least {passingGrade}% to conquer.
                         </p>
                     </div>
 
@@ -448,7 +450,7 @@ export default function CodingPage() {
                     </div>
                     {!isSubmitted && (
                         <Timer
-                            initialMinutes={CODING_TIME_MINUTES}
+                            initialMinutes={roundDuration}
                             onTimeUp={handleTimeUp}
                             storageKey={`coding_d${doorNumber}`}
                         />
