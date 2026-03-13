@@ -55,6 +55,7 @@ export default function AdminLayout({ requireAdmin = false }: AdminLayoutProps) 
                 <div
                     className="fixed inset-0 z-20 bg-black/60 lg:hidden"
                     onClick={() => setSidebarOpen(false)}
+                    aria-hidden="true"
                 />
             )}
 
@@ -73,7 +74,7 @@ export default function AdminLayout({ requireAdmin = false }: AdminLayoutProps) 
                     </div>
                     <div>
                         <p className="text-sm font-bold text-white">Terminal Paradox</p>
-                        <p className="text-xs text-white/40">Admin Panel</p>
+                        <p className="text-xs text-white/65">Admin Panel</p>
                     </div>
                 </div>
 
@@ -89,7 +90,7 @@ export default function AdminLayout({ requireAdmin = false }: AdminLayoutProps) 
                                     "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
                                     active
                                         ? "bg-violet-500/20 text-violet-300 shadow-[inset_0_0_0_1px_rgba(139,92,246,0.3)]"
-                                        : "text-white/50 hover:text-white/80 hover:bg-white/5"
+                                        : "text-white/70 hover:text-white hover:bg-white/5"
                                 )}
                             >
                                 <item.icon className="w-4 h-4" />
@@ -135,7 +136,7 @@ export default function AdminLayout({ requireAdmin = false }: AdminLayoutProps) 
                     >
                         {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
                     </button>
-                    <h1 className="text-white/80 text-sm font-medium">
+                    <h1 className="text-white/90 text-sm font-medium">
                         Admin Control Centre
                     </h1>
                     <div className="ml-auto flex items-center gap-2">

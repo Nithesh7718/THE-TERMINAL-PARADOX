@@ -9,25 +9,24 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/react-app/lib/firebase";
 import { cn } from "@/react-app/lib/utils";
 
-function StatCard({ icon: Icon, label, value, sub, color }: { icon: React.ElementType; label: string; value: string | number; sub?: string; color: string }) {
+const statColors = {
+    violet: { bg: "bg-violet-500/20", shadow: "shadow-[0_0_20px_rgba(139,92,246,0.2)]", text: "text-violet-500" },
+    cyan: { bg: "bg-cyan-500/20", shadow: "shadow-[0_0_20px_rgba(6,182,212,0.2)]", text: "text-cyan-500" },
+    emerald: { bg: "bg-emerald-500/20", shadow: "shadow-[0_0_20px_rgba(16,185,129,0.2)]", text: "text-emerald-500" },
+    amber: { bg: "bg-amber-500/20", shadow: "shadow-[0_0_20px_rgba(245,158,11,0.2)]", text: "text-amber-500" },
+};
+
+function StatCard({ icon: Icon, label, value, sub, color }: { icon: React.ElementType; label: string; value: string | number; sub?: string; color: keyof typeof statColors }) {
+    const theme = statColors[color];
     return (
         <div className="bg-[#0f0f1a] border border-white/5 rounded-2xl p-5 flex items-center gap-4">
-            <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-                data-color={color}
-                ref={(el) => {
-                    if (el) {
-                        el.style.background = `${color}20`;
-                        el.style.boxShadow = `0 0 20px ${color}20`;
-                    }
-                }}
-            >
-                <Icon className="w-6 h-6" ref={(el: SVGSVGElement | null) => { if (el) el.style.color = color; }} />
+            <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shrink-0", theme.bg, theme.shadow)}>
+                <Icon className={cn("w-6 h-6", theme.text)} />
             </div>
             <div>
-                <p className="text-white/40 text-xs uppercase tracking-wider mb-0.5">{label}</p>
+                <p className="text-white/65 text-xs uppercase tracking-wider mb-0.5">{label}</p>
                 <p className="text-white text-2xl font-black">{value}</p>
-                {sub && <p className="text-white/30 text-xs mt-0.5">{sub}</p>}
+                {sub && <p className="text-white/55 text-xs mt-0.5">{sub}</p>}
             </div>
         </div>
     );
@@ -186,7 +185,7 @@ export default function AdminDashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-white text-2xl font-bold">Dashboard</h2>
-                    <p className="text-white/40 text-sm mt-1">Live overview — updates in real-time via Firebase</p>
+                    <p className="text-white/65 text-sm mt-1">Live overview — updates in real-time via Firebase</p>
                 </div>
                 <button onClick={toggleGame} disabled={toggling}
                     className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-60 ${gameState.started
@@ -215,7 +214,7 @@ export default function AdminDashboard() {
                         <h3 className="text-white font-semibold text-sm">SEB Security Settings</h3>
                     </div>
                     <button onClick={() => setSebOpen(!sebOpen)}
-                        className="text-xs text-white/40 hover:text-white/60 transition-colors">
+                        className="text-xs text-white/60 hover:text-white/80 transition-colors">
                         {sebOpen ? "Collapse" : "Expand"}
                     </button>
                 </div>
@@ -224,7 +223,7 @@ export default function AdminDashboard() {
                         <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
                             <div>
                                 <p className="text-white text-sm font-semibold">Enforce SEB Requirement</p>
-                                <p className="text-white/30 text-xs mt-0.5">If disabled, participants can use any browser to take the exam.</p>
+                                <p className="text-white/55 text-xs mt-0.5">If disabled, participants can use any browser to take the exam.</p>
                             </div>
                             <button
                                 onClick={handleToggleSEB}
@@ -338,10 +337,10 @@ export default function AdminDashboard() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                <StatCard icon={Users} label="Registered" value={totalUsers} sub="participants" color="#8b5cf6" />
-                <StatCard icon={Activity} label="Active Now" value={activeSessions} sub={`${totalUsers - activeSessions} inactive`} color="#06b6d4" />
-                <StatCard icon={TrendingUp} label="Avg Score" value={`${avgScore}%`} sub="across all users" color="#10b981" />
-                <StatCard icon={Trophy} label="Completed All" value={fullyCompleted} sub="3/3 rounds done" color="#f59e0b" />
+                <StatCard icon={Users} label="Registered" value={totalUsers} sub="participants" color="violet" />
+                <StatCard icon={Activity} label="Active Now" value={activeSessions} sub={`${totalUsers - activeSessions} inactive`} color="cyan" />
+                <StatCard icon={TrendingUp} label="Avg Score" value={`${avgScore}%`} sub="across all users" color="emerald" />
+                <StatCard icon={Trophy} label="Completed All" value={fullyCompleted} sub="3/3 rounds done" color="amber" />
             </div>
 
             <div className="bg-[#0f0f1a] border border-white/5 rounded-2xl p-6">
@@ -359,22 +358,27 @@ export default function AdminDashboard() {
                 <div className="divide-y divide-white/3">
                     {users.map((user, i) => (
                         <div key={user.id} className="flex items-center gap-4 px-6 py-3 hover:bg-white/2 transition-colors">
-                            <span className="text-white/25 text-sm font-bold w-5 shrink-0">#{i + 1}</span>
+                            <span className="text-white/55 text-sm font-bold w-5 shrink-0">#{i + 1}</span>
                             <div className="w-8 h-8 rounded-full bg-violet-500/20 border border-violet-500/20 flex items-center justify-center text-xs font-bold text-violet-300 shrink-0">
                                 {user.name.charAt(0).toUpperCase()}
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-white/90 text-sm font-medium truncate">{user.name}</p>
-                                <p className="text-white/30 text-xs truncate">{user.email} <span className="font-mono text-white/50 ml-2">pw: {user.password}</span></p>
+                                <p className="text-white/55 text-xs truncate">{user.email} <span className="font-mono text-white/70 ml-2">pw: {user.password}</span></p>
                             </div>
                             <div className="flex items-center gap-2">
                                 <div className={`w-1.5 h-1.5 rounded-full ${user.status === "active" ? "bg-emerald-400" : "bg-white/20"}`} />
-                                <span className="text-white/30 text-xs hidden sm:block">{user.roundsCompleted}/3</span>
+                                <span className="text-white/55 text-xs hidden sm:block">{user.roundsCompleted}/3</span>
                                 <div className="hidden sm:block w-16 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-violet-500 rounded-full"
-                                        ref={(el) => { if (el) el.style.width = `${user.score}%`; }}
-                                    />
+                                    <svg className="w-full h-full">
+                                        <rect
+                                            x="0"
+                                            y="0"
+                                            width={`${user.score}%`}
+                                            height="100%"
+                                            className="fill-violet-500 transition-all duration-500"
+                                        />
+                                    </svg>
                                 </div>
                                 <span className="text-violet-400 text-sm font-bold">{user.score}%</span>
                             </div>

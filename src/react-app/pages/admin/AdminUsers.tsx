@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
     Plus,
     Pencil,
@@ -8,13 +8,19 @@ import {
     ChevronDown,
 } from "lucide-react";
 
-const ProgressBar = ({ percent }: { percent: number }) => {
-    const ref = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        if (ref.current) ref.current.style.width = `${percent}%`;
-    }, [percent]);
-    return <div ref={ref} className="h-full bg-violet-500 rounded-full transition-all duration-500" />;
-};
+const ProgressBar = ({ percent }: { percent: number }) => (
+    <div className="h-full w-full bg-white/5 rounded-full overflow-hidden">
+        <svg className="w-full h-full">
+            <rect
+                x="0"
+                y="0"
+                width={`${percent}%`}
+                height="100%"
+                className="fill-violet-500 transition-all duration-500"
+            />
+        </svg>
+    </div>
+);
 import { subscribeToUsers, adminUpdateUser, type FSUser } from "@/react-app/lib/userService";
 import { doc, deleteDoc } from "firebase/firestore";
 import { db } from "@/react-app/lib/firebase";
