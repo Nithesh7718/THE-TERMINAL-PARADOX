@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, startTransition } from "react";
+import { useState, useCallback, useEffect, startTransition, useTransition } from "react";
 import { toast } from "sonner";
 import { useParams, useNavigate } from "react-router";
 import {
@@ -47,6 +47,7 @@ export default function CodingPage() {
 
     const [language, setLanguage] = useState<Language | null>(null);
     const [hasStarted, setHasStarted] = useState(false);
+    const [isStarting, startChallenge] = useTransition();
     const [currentQuestion, setCurrentQuestion] = useState(0);
     const [showProblem, setShowProblem] = useState(true);
     const [isSubmitted, setIsSubmitted] = useState(false);
@@ -124,22 +125,27 @@ export default function CodingPage() {
 
     const handleStartChallenge = () => {
         if (!language) return;
-        setQuestionStates(
-            questions.map((q) => ({
-                code: q.starterCode[language] ?? "",
-                testCases: q.testCases.map((tc, i) => ({
-                    id: i + 1,
-                    input: tc.input,
-                    expectedOutput: tc.expectedOutput,
-                    status: "pending" as const,
-                })),
-                hiddenResults: (q.hiddenTestCases ?? []).map(() => ({
-                    status: "pending" as any,
-                })),
-                score: 0,
-            }))
-        );
-        setHasStarted(true);
+        // startChallenge wraps the expensive state-build + page-swap in a
+        // concurrent transition so the button's disabled/"Starting…" state
+        // paints immediately (this frame) before React does the heavy work.
+        startChallenge(() => {
+            setQuestionStates(
+                questions.map((q) => ({
+                    code: q.starterCode[language] ?? "",
+                    testCases: q.testCases.map((tc, i) => ({
+                        id: i + 1,
+                        input: tc.input,
+                        expectedOutput: tc.expectedOutput,
+                        status: "pending" as const,
+                    })),
+                    hiddenResults: (q.hiddenTestCases ?? []).map(() => ({
+                        status: "pending" as any,
+                    })),
+                    score: 0,
+                }))
+            );
+            setHasStarted(true);
+        });
     };
 
     const handleCodeChange = (code: string) => {
@@ -400,11 +406,11 @@ export default function CodingPage() {
 
                         <Button
                             onClick={handleStartChallenge}
-                            disabled={!language}
+                            disabled={!language || isStarting}
                             className="w-full mt-8 bg-primary hover:bg-primary/90 text-primary-foreground"
                             size="lg"
                         >
-                            Start Coding Challenge
+                            {isStarting ? "Starting…" : "Start Coding Challenge"}
                         </Button>
                     </div>
                 </main>

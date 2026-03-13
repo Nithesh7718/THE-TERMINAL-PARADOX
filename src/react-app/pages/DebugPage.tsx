@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useTransition } from "react";
 import { toast } from "sonner";
 import { useParams, useNavigate } from "react-router";
 import {
@@ -89,6 +89,7 @@ export default function DebugPage() {
 
   const [language, setLanguage] = useState<Language | null>(null);
   const [hasStarted, setHasStarted] = useState(false);
+  const [isStarting, startChallenge] = useTransition();
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedTestCase, setSelectedTestCase] = useState(0);
   const [showHint, setShowHint] = useState(false);
@@ -148,21 +149,25 @@ export default function DebugPage() {
 
   const handleStartChallenge = () => {
     if (!language) return;
-    console.log("Starting challenge with language:", language, "Questions count:", questions.length);
-    setQuestionStates(
-      questions.map((q) => ({
-        code: q?.buggyCode?.[language] || "",
-        testCases: (q?.testCases ?? []).map((tc) => ({
-          input: tc?.input ?? "",
-          expectedOutput: tc?.expectedOutput ?? "",
-          actualOutput: "",
-          status: "pending" as TCStatus,
-        })),
-        score: 0,
-        isRunning: false,
-      }))
-    );
-    setHasStarted(true);
+    // startChallenge wraps the expensive state-build + page-swap in a
+    // concurrent transition so the button's disabled/"Starting…" state
+    // paints immediately (this frame) before React does the heavy work.
+    startChallenge(() => {
+      setQuestionStates(
+        questions.map((q) => ({
+          code: q?.buggyCode?.[language] || "",
+          testCases: (q?.testCases ?? []).map((tc) => ({
+            input: tc?.input ?? "",
+            expectedOutput: tc?.expectedOutput ?? "",
+            actualOutput: "",
+            status: "pending" as TCStatus,
+          })),
+          score: 0,
+          isRunning: false,
+        }))
+      );
+      setHasStarted(true);
+    });
   };
 
   const handleCodeChange = (code: string) => {
@@ -418,11 +423,11 @@ export default function DebugPage() {
             <LanguageSelector selected={language} onSelect={setLanguage} />
             <Button
               onClick={handleStartChallenge}
-              disabled={!language}
+              disabled={!language || isStarting}
               className="w-full mt-8 bg-primary hover:bg-primary/90 text-primary-foreground"
               size="lg"
             >
-              Start Debug Challenge
+              {isStarting ? "Starting…" : "Start Debug Challenge"}
             </Button>
           </div>
         </main>

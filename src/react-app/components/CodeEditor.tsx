@@ -50,6 +50,7 @@ export default function CodeEditor({
           tabSize: 2,
           wordWrap: "on",
           padding: { top: 16, bottom: 16 },
+          fixedOverflowWidgets: true,  // keep IME/aria containers inside editor, prevents page-level CLS
         }}
       />
     </div>
