@@ -124,6 +124,13 @@ export default function Home() {
   }, []);
 
   const handleSignOut = async () => {
+    const seb = (window as any).SafeExamBrowser;
+    if (seb && typeof seb.quit === 'function') {
+      // If in SEB, let SEB handle the quit (it will show its own system password prompt)
+      seb.quit();
+      return;
+    }
+
     if (exitPwRequired) {
       // Exit password is set — show the modal
       setExitModalOpen(true);

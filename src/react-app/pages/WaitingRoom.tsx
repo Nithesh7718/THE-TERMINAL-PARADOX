@@ -36,6 +36,12 @@ export default function WaitingRoom() {
     }, [navigate]);
 
     const handleSignOut = async () => {
+        const seb = (window as any).SafeExamBrowser;
+        if (seb && typeof seb.quit === 'function') {
+            seb.quit();
+            return;
+        }
+
         if (session?.email) await markUserInactive(session.email);
         clearUserSession();
         navigate("/login", { replace: true });

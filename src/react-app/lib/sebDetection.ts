@@ -56,14 +56,25 @@ export async function generateSEBConfig(
   <key>startURL</key>
   <string>${base}/login</string>
 
-  <!-- Passwords (SHA256 hashed) -->
+  <!-- IMPORTANT: Allow quitting ONLY with password if one is set -->
+  <key>allowQuit</key>
+  <true/>
+  
   ${hashedQuit ? `
   <key>hashedQuitPassword</key>
-  <string>${hashedQuit}</string>
+  <string>${hashedQuit}</string>` : `
+  <key>hashedQuitPassword</key>
+  <string></string>
+  <!-- If no password set, we might want to disable quitting entirely via UI -->
   <key>allowQuit</key>
-  <true/>` : `
-  <key>allowQuit</key>
-  <false/>`}
+  <false/>
+  `}
+
+  <key>insideSebEnableQuit</key>
+  <true/>
+
+  <key>quitURLConfirm</key>
+  <true/>
 
   <!-- Restrict to exam domain + Firebase only -->
   <key>URLFilterEnable</key>
@@ -113,7 +124,13 @@ export async function generateSEBConfig(
   <!-- Kiosk / lockdown settings -->
   <key>showTaskBar</key><false/>
   <key>enableTouchExit</key><false/>
-  <key>quitURLConfirm</key><true/>
+  <key>monitorSecondScreen</key><true/>
+  
+  <!-- Security -->
+  <key>hookKeys</key><true/>
+  <key>enableAltF4</key><false/>
+  <key>enableCtrlEsc</key><false/>
+  <key>enableThreadReaper</key><true/>
 
   <!-- Disable right-click -->
   <key>browserContextMenuURL</key><false/>
