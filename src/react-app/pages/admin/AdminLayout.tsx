@@ -62,7 +62,7 @@ export default function AdminLayout({ requireAdmin = false }: AdminLayoutProps) 
             {/* Sidebar */}
             <aside
                 className={cn(
-                    "fixed inset-y-0 left-0 z-30 w-64 bg-[#0f0f1a] border-r border-white/5 flex flex-col transition-transform duration-300",
+                    "fixed inset-y-0 left-0 z-30 w-64 bg-[#0f0f1a] border-r border-white/5 flex flex-col transition-transform duration-300 no-print",
                     sidebarOpen ? "translate-x-0" : "-translate-x-full",
                     "lg:translate-x-0 lg:static lg:z-auto"
                 )}
@@ -129,7 +129,7 @@ export default function AdminLayout({ requireAdmin = false }: AdminLayoutProps) 
             {/* Main content */}
             <div className="flex-1 flex flex-col min-w-0">
                 {/* Top bar */}
-                <header className="sticky top-0 z-10 flex items-center gap-4 px-6 py-4 bg-[#0a0a0f]/80 backdrop-blur-md border-b border-white/5">
+                <header className="no-print sticky top-0 z-10 flex items-center gap-4 px-6 py-4 bg-[#0a0a0f]/80 backdrop-blur-md border-b border-white/5">
                     <button
                         className="lg:hidden text-white/60 hover:text-white transition-colors"
                         onClick={() => setSidebarOpen(!sidebarOpen)}

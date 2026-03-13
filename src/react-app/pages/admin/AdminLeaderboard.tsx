@@ -109,9 +109,9 @@ export default function AdminLeaderboard() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-white/90 text-sm font-semibold truncate print:text-black">{u.name}</p>
-                                    <div className="flex items-center gap-3 mt-0.5">
+                                    <div className="flex items-center gap-3 mt-0.5 no-print">
                                         <p className="text-white/55 text-xs print:text-gray-500">Round {u.roundsCompleted}/3</p>
-                                        <div className="flex gap-1 no-print">
+                                        <div className="flex gap-1">
                                             {[1, 2, 3].map(r => (
                                                 <Circle key={r} className="w-2 h-2" fill={r <= u.roundsCompleted ? "#8b5cf6" : "transparent"}
                                                     stroke={r <= u.roundsCompleted ? "#8b5cf6" : "rgba(255,255,255,0.15)"} />
