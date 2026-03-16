@@ -109,6 +109,13 @@ export default function Home() {
     if (userSession?.email) {
       const unsub = subscribeToUser(userSession.email, (data) => {
         if (data) {
+          if (data.status === "suspended") {
+            clearEntryGate();
+            clearUserSession();
+            toast.error("Your account has been suspended by the admin.");
+            navigate("/login", { replace: true });
+            return;
+          }
           setUserData(data);
           // Round 1 always open; Round 2 opens after completing Round 1, etc.
           setCurrentRound(data.roundsCompleted + 1);

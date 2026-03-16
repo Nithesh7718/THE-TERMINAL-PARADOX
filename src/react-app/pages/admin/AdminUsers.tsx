@@ -21,11 +21,23 @@ const ProgressBar = ({ percent }: { percent: number }) => (
         </svg>
     </div>
 );
-import { subscribeToUsers, adminUpdateUser, type FSUser } from "@/react-app/lib/userService";
+import { subscribeToUsers, adminUpdateUser, adminCreateUser, type FSUser } from "@/react-app/lib/userService";
 import { doc, deleteDoc } from "firebase/firestore";
 import { db } from "@/react-app/lib/firebase";
 import { isAdmin } from "@/react-app/lib/adminAuth";
 import { toast } from "sonner";
+import { cn } from "@/react-app/lib/utils";
+import { Download, Shield } from "lucide-react";
+
+function formatTimeAgo(iso: string) {
+    const diff = Date.now() - new Date(iso).getTime();
+    if (diff < 60000) return "Just now";
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(diff / 3600000);
+    if (hours < 24) return `${hours}h ago`;
+    return iso.split("T")[0];
+}
 
 type AppUser = FSUser;
 type SortKey = "name" | "email" | "password" | "score" | "roundsCompleted" | "status" | "lastActive";
@@ -117,10 +129,43 @@ export default function AdminUsers() {
                 });
                 toast.success("User updated successfully.");
             } else {
-                toast.info("Ask participant to self-register via the login page.");
+                await adminCreateUser({
+                    name: form.name,
+                    email: form.email,
+                    password: form.password,
+                    score: form.score,
+                    roundsCompleted: form.roundsCompleted,
+                    status: form.status,
+                    role: form.role,
+                    lastActive: new Date().toISOString(),
+                });
+                toast.success("User created successfully.");
             }
             setModalOpen(false);
-        } catch { toast.error("Update failed."); }
+        } catch (e: any) { 
+            toast.error(e.message || "Operation failed."); 
+        }
+    };
+
+    const downloadCSV = () => {
+        const headers = ["Name", "Email", "Password", "Score", "Rounds", "Status", "Last Active", "Tab Switches"];
+        const rows = users.map(u => [
+            u.name, 
+            u.email, 
+            u.password, 
+            u.score, 
+            u.roundsCompleted, 
+            u.status, 
+            u.lastActive, 
+            u.tabSwitches || 0
+        ]);
+        const csv = [headers, ...rows].map(r => r.join(",")).join("\n");
+        const blob = new Blob([csv], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `terminal_paradox_users_${new Date().toISOString().split("T")[0]}.csv`;
+        a.click();
     };
 
     const handleDelete = async () => {
@@ -148,15 +193,26 @@ export default function AdminUsers() {
                         {users.length} participants total
                     </p>
                 </div>
-                {adminAccess && (
-                    <button
-                        onClick={openCreate}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-all shadow-[0_0_20px_rgba(139,92,246,0.3)]"
-                    >
-                        <Plus className="w-4 h-4" />
-                        Add User
-                    </button>
-                )}
+                <div className="flex items-center gap-3">
+                    {adminAccess && (
+                        <button
+                            onClick={downloadCSV}
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/70 hover:text-white text-sm font-semibold transition-all"
+                        >
+                            <Download className="w-4 h-4" />
+                            Export CSV
+                        </button>
+                    )}
+                    {adminAccess && (
+                        <button
+                            onClick={openCreate}
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-all shadow-[0_0_20px_rgba(139,92,246,0.3)]"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Add User
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Search */}
@@ -184,7 +240,8 @@ export default function AdminUsers() {
                                     ["score", "Score"],
                                     ["roundsCompleted", "Rounds"],
                                     ["status", "Status"],
-                                    ["lastActive", "Last Active"],
+                                    ["lastActive", "Activity"],
+                                    ["tabSwitches", "Security"],
                                 ] as [SortKey, string][]).map(([key, label]) => (
                                     <th
                                         key={key}
@@ -231,10 +288,28 @@ export default function AdminUsers() {
                                     <td className="px-5 py-4 text-white/50">{user.roundsCompleted}/3</td>
                                     <td className="px-5 py-4">
                                         <div className="flex flex-col gap-0.5">
-                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md w-fit ${user.status === "active" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-white/5 text-white/30"}`}>
+                                            <span className={cn(
+                                                "text-[10px] font-bold px-1.5 py-0.5 rounded-md w-fit",
+                                                user.status === "active" 
+                                                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+                                                    : user.status === "suspended"
+                                                        ? "bg-red-500/10 text-red-400 border border-red-500/20"
+                                                        : "bg-white/5 text-white/30"
+                                            )}>
                                                 {user.status.toUpperCase()}
                                             </span>
-                                            <span className="text-[9px] text-white/20 whitespace-nowrap">{user.lastActive.split('T')[0]}</span>
+                                            <span className="text-[9px] text-white/20 whitespace-nowrap">{formatTimeAgo(user.lastActive)}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-5 py-4">
+                                        <div className={cn(
+                                            "flex items-center gap-1 px-2 py-0.5 rounded-md w-fit border text-[10px] font-bold",
+                                            (user.tabSwitches || 0) > 3 
+                                                ? "bg-red-500/20 text-red-400 border-red-500/30 animate-pulse" 
+                                                : "bg-white/5 text-white/30 border-white/10"
+                                        )}>
+                                            <Shield className="w-2.5 h-2.5" />
+                                            {user.tabSwitches || 0}
                                         </div>
                                     </td>
                                     <td className="px-5 py-4">
@@ -350,15 +425,16 @@ export default function AdminUsers() {
                                         >
                                             <option value="active">Active</option>
                                             <option value="inactive">Inactive</option>
+                                            <option value="suspended">Suspended</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label htmlFor="user-score" className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">Score (%)</label>
+                                        <label htmlFor="user-score" className="block text-xs text-white/40 uppercase tracking-wider mb-1.5">Total Score</label>
                                         <input
                                             id="user-score"
-                                            title="Score Percentage"
+                                            title="Total Score"
                                             placeholder="0"
-                                            type="number" min={0} max={100}
+                                            type="number" min={0} max={300}
                                             value={form.score}
                                             onChange={e => setForm(p => ({ ...p, score: parseInt(e.target.value) || 0 }))}
                                             className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-violet-500/50 transition-all"

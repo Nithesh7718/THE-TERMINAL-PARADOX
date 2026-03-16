@@ -14,7 +14,7 @@ export interface FSUser {
     roundScores: Record<number, number>; // Individual round scores
     roundsCompleted: number;
     lastActive: string;
-    status: "active" | "inactive";
+    status: "active" | "inactive" | "suspended";
     role: "participant";
     tabSwitches?: number; // Count of times user left the browser tab
     createdAt?: unknown;
@@ -65,6 +65,7 @@ export async function loginUser(email: string, password: string): Promise<FSUser
     if (!snap.exists()) throw new Error("No account found. Please register.");
     const user = snap.data() as FSUser;
     if (user.password !== password) throw new Error("Incorrect password.");
+    if (user.status === "suspended") throw new Error("Your account has been suspended. Please contact the admin.");
     // Update last active + status
     await updateDoc(ref, { lastActive: new Date().toISOString(), status: "active" });
     return user;
@@ -104,6 +105,31 @@ export async function adminUpdateUser(email: string, updates: Partial<FSUser>): 
         ...updates,
         lastActive: new Date().toISOString(),
     });
+}
+
+/** Admin-only: Create a user manually */
+export async function adminCreateUser(userData: Omit<FSUser, "id" | "createdAt" | "roundScores">): Promise<void> {
+    const id = emailToId(userData.email);
+    const ref = doc(USERS_COL, id);
+    await setDoc(ref, {
+        ...userData,
+        id,
+        roundScores: {},
+        createdAt: serverTimestamp(),
+        lastActive: new Date().toISOString(),
+    });
+}
+
+/** Admin-only: Reset all scores/rounds for all users */
+export async function resetAllScores(): Promise<void> {
+    const snap = await getDocs(USERS_COL);
+    const promises = snap.docs.map(d => updateDoc(d.ref, {
+        score: 0,
+        roundsCompleted: 0,
+        roundScores: {},
+        tabSwitches: 0
+    }));
+    await Promise.all(promises);
 }
 
 /** Mark user as inactive on sign-out */

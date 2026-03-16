@@ -108,12 +108,18 @@ export default function DebugPage() {
   useEffect(() => {
     if (userSession?.email) {
       return subscribeToUser(userSession.email, (u) => {
+        if (u?.status === "suspended") {
+          setIsSubmitted(true);
+          toast.error("Account suspended.");
+          navigate("/login", { replace: true });
+          return;
+        }
         setDbProgress(u ? u.roundsCompleted : 0);
       });
     } else {
       setDbProgress(0);
     }
-  }, [userSession]);
+  }, [userSession, navigate]);
 
   // ── Progress gating: only accessible after Round 1 is complete ──
   useEffect(() => {

@@ -63,12 +63,18 @@ export default function QuizPage() {
   useEffect(() => {
     if (userSession?.email) {
       return subscribeToUser(userSession.email, (u) => {
+        if (u?.status === "suspended") {
+          setIsSubmitted(true); // Stop timer/interaction
+          toast.error("Account suspended.");
+          navigate("/login", { replace: true });
+          return;
+        }
         setDbProgress(u ? u.roundsCompleted : 0);
       });
     } else {
       setDbProgress(0);
     }
-  }, [userSession]);
+  }, [userSession, navigate]);
 
   // ── Game-started gate: redirect if admin hasn't started the game yet ──
   useEffect(() => {

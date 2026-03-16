@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Users, Trophy, Activity, TrendingUp, Star, PlayCircle, StopCircle, Download, ShieldCheck } from "lucide-react";
-import { subscribeToUsers, type FSUser } from "@/react-app/lib/userService";
+import { subscribeToUsers, resetAllScores, type FSUser } from "@/react-app/lib/userService";
 import { subscribeToGameState, startGame, stopGame, sendBroadcast, setPassingGrades, setRoundTimings, setSEBRequired, type GameState } from "@/react-app/lib/gameState";
 import { toast } from "sonner";
 import { Megaphone, Clock } from "lucide-react";
@@ -40,8 +40,8 @@ function BarChart({ data }: { data: { name: string; value: number }[] }) {
     return (
         <div className="w-full overflow-x-auto">
             <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[320px]">
-                {[0, 25, 50, 75, 100].map(v => {
-                    const y = 8 + INNER_H - (v / 100) * INNER_H;
+                {[0, 75, 150, 225, 300].map(v => {
+                    const y = 8 + INNER_H - (v / 300) * INNER_H;
                     return <g key={v}>
                         <line x1={PAD_L} y1={y} x2={W - 8} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
                         <text x={PAD_L - 4} y={y + 4} textAnchor="end" fill="rgba(255,255,255,0.3)" fontSize="9">{v}</text>
@@ -388,7 +388,7 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                 <StatCard icon={Users} label="Registered" value={totalUsers} sub="participants" color="violet" />
                 <StatCard icon={Activity} label="Active Now" value={activeSessions} sub={`${totalUsers - activeSessions} inactive`} color="cyan" />
-                <StatCard icon={TrendingUp} label="Avg Score" value={`${avgScore}%`} sub="across all users" color="emerald" />
+                <StatCard icon={TrendingUp} label="Avg Points" value={avgScore} sub="across all rounds" color="emerald" />
                 <StatCard icon={Trophy} label="Completed All" value={fullyCompleted} sub="3/3 rounds done" color="amber" />
             </div>
 
@@ -401,8 +401,21 @@ export default function AdminDashboard() {
             </div>
 
             <div className="bg-[#0f0f1a] border border-white/5 rounded-2xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-white/5">
+                <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
                     <h3 className="text-white font-semibold text-sm">All Participants — {totalUsers} registered</h3>
+                    <button
+                        onClick={async () => {
+                            if (confirm("🚨 DANGER: This will reset scores for ALL participants to 0. This cannot be undone. Proceed?")) {
+                                try {
+                                    await resetAllScores();
+                                    toast.success("Leaderboard has been wiped clean.");
+                                } catch { toast.error("Reset failed."); }
+                            }
+                        }}
+                        className="text-[10px] text-red-400/50 hover:text-red-400 font-bold uppercase tracking-wider transition-colors"
+                    >
+                        Reset All Data
+                    </button>
                 </div>
                 <div className="divide-y divide-white/3">
                     {users.map((user, i) => (
@@ -418,18 +431,18 @@ export default function AdminDashboard() {
                             <div className="flex items-center gap-2">
                                 <div className={`w-1.5 h-1.5 rounded-full ${user.status === "active" ? "bg-emerald-400" : "bg-white/20"}`} />
                                 <span className="text-white/55 text-xs hidden sm:block">{user.roundsCompleted}/3</span>
-                                <div className="hidden sm:block w-16 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                    <div className="hidden sm:block w-16 h-1.5 bg-white/5 rounded-full overflow-hidden">
                                     <svg className="w-full h-full">
                                         <rect
                                             x="0"
                                             y="0"
-                                            width={`${user.score}%`}
+                                            width={`${Math.min(user.score / 3, 100)}%`}
                                             height="100%"
                                             className="fill-violet-500 transition-all duration-500"
                                         />
                                     </svg>
                                 </div>
-                                <span className="text-violet-400 text-sm font-bold">{user.score}%</span>
+                                <span className="text-violet-400 text-sm font-bold">{user.score}</span>
                                 <div className={cn(
                                     "px-2 py-0.5 rounded text-[10px] font-bold border",
                                     (user.tabSwitches || 0) > 3 
